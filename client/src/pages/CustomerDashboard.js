@@ -1,0 +1,291 @@
+import { useEffect, useState } from "react";
+import MenuItemCard from "../components/MenuItemCard";
+import Cart from "../components/Cart";
+import FavoritesPage from "./FavoritesPage";
+import ReviewSection from "../components/ReviewSection";
+import ThemeToggle from "../components/ThemeToggle";
+import { useLanguage } from "../contexts/LanguageContext";
+import "../App.css";
+
+export default function CustomerDashboard({ user }) {
+  const { t } = useLanguage();
+  const [menu, setMenu] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showCart, setShowCart] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [currentView, setCurrentView] = useState('menu'); // menu, favorites, reviews
+  const [selectedItemForReview, setSelectedItemForReview] = useState(null);
+
+  useEffect(() => {
+    fetchMenu();
+    fetchCategories();
+    fetchOrderHistory();
+    loadCart();
+  }, []);
+
+  const fetchMenu = async () => {
+    try {
+      const response = await fetch("http://localhost:5001/api/menu/items?limit=100");
+      const data = await response.json();
+      setMenu(data.items || []);
+    } catch (error) {
+      console.error("Error fetching menu:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("http://localhost:5001/api/menu/categories");
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const fetchOrderHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:5001/api/orders/customer/history", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOrderHistory(data);
+      }
+    } catch (error) {
+      console.error("Error fetching order history:", error);
+    }
+  };
+
+  const loadCart = () => {
+    const saved = localStorage.getItem("cart");
+    if (saved) {
+      setCart(JSON.parse(saved));
+    }
+  };
+
+  const addToCart = (item) => {
+    const existingIndex = cart.findIndex(c => c._id === item._id);
+    let newCart;
+    
+    if (existingIndex >= 0) {
+      newCart = [...cart];
+      newCart[existingIndex].qty += 1;
+    } else {
+      newCart = [...cart, { ...item, qty: 1 }];
+    }
+
+    setCart(newCart);
+    localStorage.setItem("cart", JSON.stringify(newCart));
+  };
+
+  const updateCartItem = (itemId, newQty) => {
+    if (newQty === 0) {
+      const newCart = cart.filter(item => item._id !== itemId);
+      setCart(newCart);
+      localStorage.setItem("cart", JSON.stringify(newCart));
+    } else {
+      const newCart = cart.map(item => 
+        item._id === itemId ? { ...item, qty: newQty } : item
+      );
+      setCart(newCart);
+      localStorage.setItem("cart", JSON.stringify(newCart));
+    }
+  };
+
+  const filteredMenu = selectedCategory === "All" 
+    ? menu 
+    : menu.filter(item => item.categoryId?.name === selectedCategory);
+
+  const cartItemsCount = cart.reduce((total, item) => total + item.qty, 0);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("cart");
+    window.location.reload();
+  };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>{t('loading')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="customer-dashboard">
+      {/* Header */}
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div>
+            <h1>🍽️ {t('welcome')}</h1>
+            <p>{t('menu')}</p>
+          </div>
+          <div className="header-actions">
+            <ThemeToggle />
+            <button 
+              className={`nav-btn ${currentView === 'menu' ? 'active' : ''}`}
+              onClick={() => setCurrentView('menu')}
+            >
+              🍽️ {t('menu')}
+            </button>
+            <button 
+              className={`nav-btn ${currentView === 'favorites' ? 'active' : ''}`}
+              onClick={() => setCurrentView('favorites')}
+            >
+              ❤️ {t('favorites')}
+            </button>
+            <button 
+              className="history-btn"
+              onClick={() => setShowHistory(true)}
+            >
+              📋 {t('orderHistory')}
+            </button>
+            <button 
+              className="cart-btn"
+              onClick={() => setShowCart(true)}
+            >
+              🛒 {t('cart')} ({cartItemsCount})
+            </button>
+            <button className="logout-btn" onClick={logout}>
+              {t('logout')}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      {currentView === 'menu' && (
+        <>
+          {/* Category Filter */}
+          <div className="category-filter">
+            <button
+              className={`category-btn ${selectedCategory === "All" ? 'active' : ''}`}
+              onClick={() => setSelectedCategory("All")}
+            >
+              All
+            </button>
+            {categories.map(category => (
+              <button
+                key={category._id}
+                className={`category-btn ${selectedCategory === category.name ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category.name)}
+              >
+                {category.icon} {category.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Menu Items */}
+          <div className="menu-container">
+            <div className="menu-grid">
+              {filteredMenu.map(item => (
+                <MenuItemCard
+                  key={item._id}
+                  item={item}
+                  onAddToCart={addToCart}
+                  cartItem={cart.find(c => c._id === item._id)}
+                  user={user}
+                  onReviewClick={setSelectedItemForReview}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {currentView === 'favorites' && (
+        <FavoritesPage 
+          user={user} 
+          onAddToCart={addToCart} 
+          cart={cart} 
+        />
+      )}
+
+      {/* Review Modal */}
+      {selectedItemForReview && (
+        <div className="modal-overlay" onClick={() => setSelectedItemForReview(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Reviews for {selectedItemForReview.name}</h2>
+              <button 
+                className="close-btn"
+                onClick={() => setSelectedItemForReview(null)}
+              >
+                ×
+              </button>
+            </div>
+            <ReviewSection 
+              menuItemId={selectedItemForReview._id} 
+              user={user} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal */}
+      {showCart && (
+        <Cart
+          cart={cart}
+          onClose={() => setShowCart(false)}
+          onUpdateItem={updateCartItem}
+        />
+      )}
+
+      {/* Order History Modal */}
+      {showHistory && (
+        <div className="cart-modal-overlay" onClick={() => setShowHistory(false)}>
+          <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <h2>📋 Order History</h2>
+              <button className="close-btn" onClick={() => setShowHistory(false)}>×</button>
+            </div>
+            <div className="cart-content">
+              {orderHistory.length === 0 ? (
+                <div className="empty-cart">
+                  <p>No orders yet</p>
+                  <p>Start ordering to see your history!</p>
+                </div>
+              ) : (
+                <div className="order-history-list">
+                  {orderHistory.map(order => (
+                    <div key={order._id} className="history-order">
+                      <div className="order-header">
+                        <span className="order-number">#{order.orderNumber}</span>
+                        <span className={`order-status status-${order.status}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <div className="order-details">
+                        <div>Table {order.tableId?.number}</div>
+                        <div>{new Date(order.createdAt).toLocaleDateString()}</div>
+                        <div className="order-total">₹{order.total}</div>
+                      </div>
+                      <div className="order-items-summary">
+                        {order.items.map((item, idx) => (
+                          <span key={idx}>
+                            {item.menuItemId?.name} x{item.qty}
+                            {idx < order.items.length - 1 ? ', ' : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

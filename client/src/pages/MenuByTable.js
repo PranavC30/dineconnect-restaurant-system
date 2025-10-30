@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import MenuItemCard from "../components/MenuItemCard";
 import Cart from "../components/Cart";
 import NotificationBell from "../components/NotificationBell";
+import VoiceOrdering from "../components/VoiceOrdering";
 import config from "../config";
 import { useNotification } from "../contexts/NotificationContext";
 import "../App.css";
@@ -108,6 +109,42 @@ export default function MenuByTable() {
     }
   };
 
+  const handleVoiceSearch = (searchQuery) => {
+    // Extract search terms from voice command
+    const query = searchQuery.toLowerCase();
+    
+    if (query.includes('show') || query.includes('search')) {
+      // Extract the item type from voice command
+      const searchTerms = ['biryani', 'chicken', 'mutton', 'dal', 'roti', 'drink', 'lassi', 'tea', 'coffee'];
+      const foundTerm = searchTerms.find(term => query.includes(term));
+      
+      if (foundTerm) {
+        setSearchTerm(foundTerm);
+        
+        // Also set category if applicable
+        const categoryMap = {
+          'biryani': 'Main Course',
+          'chicken': 'Main Course', 
+          'mutton': 'Main Course',
+          'dal': 'Main Course',
+          'roti': 'Breads',
+          'drink': 'Beverages',
+          'lassi': 'Beverages',
+          'tea': 'Beverages',
+          'coffee': 'Beverages'
+        };
+        
+        const category = categoryMap[foundTerm];
+        if (category && categories.find(cat => cat.name === category)) {
+          setSelectedCategory(category);
+        }
+      } else {
+        // General search
+        setSearchTerm(query.replace(/show|search|me|for/g, '').trim());
+      }
+    }
+  };
+
   const placeOrder = async () => {
     if (!table || cart.length === 0) return null;
 
@@ -208,6 +245,13 @@ export default function MenuByTable() {
           className="search-input"
         />
       </div>
+
+      {/* Voice Ordering */}
+      <VoiceOrdering 
+        menuItems={menu}
+        onAddToCart={addToCart}
+        onVoiceSearch={handleVoiceSearch}
+      />
 
       {/* Category Filter */}
       <div className="category-filter">

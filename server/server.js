@@ -16,7 +16,7 @@ const app = express();
 
 // CORS configuration for production
 const corsOptions = {
-  origin: ["http://localhost:3001", "http://localhost:3000", "http://192.168.50.51:3001"],
+  origin: ["http://localhost:3001", "http://localhost:3000", "http://10.151.242.51:3001"],
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -45,7 +45,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/dineconnect
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3001", "http://localhost:3000", "http://192.168.50.51:3001"],
+    origin: ["http://localhost:3001", "http://localhost:3000", "http://10.151.242.51:3001"],
     methods: ["GET", "POST"]
   }
 });
@@ -123,8 +123,29 @@ function getStatusMessage(status) {
 global.io = io;
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
-  console.log(`✅ DineConnect Server running on port ${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+  console.log(`✅ DineConnect Server running on ${HOST}:${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔔 Real-time notifications enabled`);
+  
+  // Get local IP for mobile access
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  let localIP = 'localhost';
+  
+  // Find Wi-Fi interface IP
+  for (const name of Object.keys(interfaces)) {
+    if (name.includes('Wi-Fi') || (name.includes('Wireless') && name.includes('Wi-Fi'))) {
+      for (const interface of interfaces[name]) {
+        if (interface.family === 'IPv4' && !interface.internal) {
+          localIP = interface.address;
+          break;
+        }
+      }
+    }
+  }
+  
+  console.log(`📱 Mobile Access: http://${localIP}:${PORT}`);
 });

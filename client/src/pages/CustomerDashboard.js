@@ -6,6 +6,7 @@ import ReviewSection from "../components/ReviewSection";
 import ThemeToggle from "../components/ThemeToggle";
 import NotificationBell from "../components/NotificationBell";
 import QRCodeDisplay from "../components/QRCodeDisplay";
+import VoiceAssistant from "../components/VoiceAssistant";
 import config from "../config";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNotification } from "../contexts/NotificationContext";
@@ -126,6 +127,44 @@ export default function CustomerDashboard({ user }) {
     }
   };
 
+  const handleVoiceOrder = async (orderItems) => {
+    try {
+      // First, add items to cart so user can see them
+      let newCart = [...cart];
+      
+      orderItems.forEach(voiceItem => {
+        // Find the actual menu item
+        const menuItem = menu.find(item => item._id === voiceItem.id);
+        if (menuItem) {
+          // Check if item already exists in cart
+          const existingIndex = newCart.findIndex(c => c._id === menuItem._id);
+          
+          if (existingIndex >= 0) {
+            // Add to existing quantity
+            newCart[existingIndex].qty += voiceItem.quantity;
+          } else {
+            // Add new item to cart
+            newCart.push({ ...menuItem, qty: voiceItem.quantity });
+          }
+        }
+      });
+      
+      // Update cart state and localStorage
+      setCart(newCart);
+      localStorage.setItem("cart", JSON.stringify(newCart));
+      
+      // Show cart modal for final confirmation
+      setShowCart(true);
+      
+      // Return success (no actual order placed yet, just added to cart)
+      return { success: true, message: "Items added to cart! Please review and place order from cart." };
+      
+    } catch (error) {
+      console.error('Error adding voice items to cart:', error);
+      throw error;
+    }
+  };
+
   const filteredMenu = selectedCategory === "All" 
     ? menu 
     : menu.filter(item => item.categoryId?.name === selectedCategory);
@@ -176,6 +215,12 @@ export default function CustomerDashboard({ user }) {
               onClick={() => setCurrentView('qrcodes')}
             >
               📱 QR Codes
+            </button>
+            <button 
+              className={`nav-btn ${currentView === 'voice' ? 'active' : ''}`}
+              onClick={() => setCurrentView('voice')}
+            >
+              🎤 Voice Order
             </button>
             <button 
               className="history-btn"
@@ -244,6 +289,16 @@ export default function CustomerDashboard({ user }) {
         />
       )}
 
+      {currentView === 'voice' && (
+        <div className="voice-section">
+          <VoiceAssistant 
+            menuItems={menu}
+            onPlaceOrder={handleVoiceOrder}
+            customerName={user?.name}
+          />
+        </div>
+      )}
+
       {currentView === 'qrcodes' && (
         <div className="qrcodes-section">
           <h2>📱 Table QR Codes</h2>
@@ -259,7 +314,7 @@ export default function CustomerDashboard({ user }) {
                 
                 <div className="qr-code-container">
                   <QRCodeDisplay 
-                    value={`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`}
+                    value={`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`}
                     size={150}
                   />
                 </div>
@@ -267,14 +322,14 @@ export default function CustomerDashboard({ user }) {
                 <div className="qr-actions">
                   <button 
                     className="view-menu-btn"
-                    onClick={() => window.open(`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`, '_blank')}
+                    onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
                   >
                     🍽️ View Menu
                   </button>
                   <button 
                     className="copy-link-btn"
                     onClick={() => {
-                      navigator.clipboard.writeText(`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`);
+                      navigator.clipboard.writeText(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`);
                       alert('Link copied to clipboard!');
                     }}
                   >

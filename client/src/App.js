@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import LoginPage from "./pages/LoginPage";
 import Register from "./pages/Register";
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -44,7 +45,8 @@ function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <Router>
+        <NotificationProvider>
+          <Router>
           <div className="App">
             <Routes>
               {/* Public Routes */}
@@ -64,6 +66,7 @@ function App() {
             </Routes>
           </div>
         </Router>
+        </NotificationProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import config from "../config";
 import "../App.css";
 
 export default function LoginPage({ setUser }) {
@@ -7,12 +8,14 @@ export default function LoginPage({ setUser }) {
 
   const handleLogin = async () => {
     try {
-      const res = await fetch("http://localhost:5001/api/auth/login", {
+      const res = await fetch(`${config.API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      
       const data = await res.json();
+      
       if (data.token) {
         localStorage.setItem("token", data.token);
         setUser(data);
@@ -20,6 +23,7 @@ export default function LoginPage({ setUser }) {
         alert(data.message);
       }
     } catch (err) {
+      console.error("Login error:", err);
       alert("Server Error ❌");
     }
   };

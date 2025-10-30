@@ -68,6 +68,19 @@ router.post("/", authMiddleware, async (req, res) => {
       { path: 'items.menuItemId', select: 'name price imageUrl' }
     ]);
 
+    // Send real-time notification to kitchen staff
+    if (global.io) {
+      global.io.to('kitchen').emit('new-order-alert', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        tableNumber: table.number,
+        items: order.items,
+        total: order.total,
+        customerName: req.user?.name || 'Guest Customer',
+        timestamp: new Date()
+      });
+    }
+
     res.json(order);
   } catch (error) {
     console.error('Order creation error:', error);
@@ -125,11 +138,41 @@ router.patch("/:id/status", staffOrAdmin, async (req, res) => {
       { new: true }
     ).populate([
       { path: 'tableId', select: 'number' },
-      { path: 'items.menuItemId', select: 'name price' }
+      { path: 'items.menuItemId', select: 'name price' },
+      { path: 'customerId', select: 'name' }
     ]);
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Send real-time notification to customer
+    if (global.io && order.tableId) {
+      const statusMessages = {
+        'placed': '🍽️ Your order has been placed successfully!',
+        'preparing': '👨‍🍳 Your order is being prepared in the kitchen',
+        'ready': '✅ Your order is ready for pickup!',
+        'served': '🎉 Your order has been served. Enjoy your meal!'
+      };
+
+      global.io.to(`table-${order.tableId._id}`).emit('order-update', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        status: status,
+        message: statusMessages[status] || 'Order status updated',
+        tableNumber: order.tableId.number,
+        timestamp: new Date()
+      });
+
+      // Also notify kitchen staff
+      global.io.to('kitchen').emit('kitchen-update', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        status: status,
+        tableNumber: order.tableId.number,
+        customerName: order.customerId?.name || 'Guest Customer',
+        timestamp: new Date()
+      });
     }
 
     res.json(order);

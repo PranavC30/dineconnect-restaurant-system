@@ -4,11 +4,16 @@ import Cart from "../components/Cart";
 import FavoritesPage from "./FavoritesPage";
 import ReviewSection from "../components/ReviewSection";
 import ThemeToggle from "../components/ThemeToggle";
+import NotificationBell from "../components/NotificationBell";
+import QRCodeDisplay from "../components/QRCodeDisplay";
+import config from "../config";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useNotification } from "../contexts/NotificationContext";
 import "../App.css";
 
 export default function CustomerDashboard({ user }) {
   const { t } = useLanguage();
+  const { joinRoom, requestNotificationPermission } = useNotification();
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cart, setCart] = useState([]);
@@ -17,19 +22,27 @@ export default function CustomerDashboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [orderHistory, setOrderHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [currentView, setCurrentView] = useState('menu'); // menu, favorites, reviews
+  const [currentView, setCurrentView] = useState('menu'); // menu, favorites, reviews, qrcodes
   const [selectedItemForReview, setSelectedItemForReview] = useState(null);
+  const [tables, setTables] = useState([]);
 
   useEffect(() => {
     fetchMenu();
     fetchCategories();
     fetchOrderHistory();
+    fetchTables();
     loadCart();
-  }, []);
+    
+    // Join notification room and request permission
+    if (user) {
+      joinRoom('customer', user.userId);
+      requestNotificationPermission();
+    }
+  }, [user, joinRoom, requestNotificationPermission]);
 
   const fetchMenu = async () => {
     try {
-      const response = await fetch("http://localhost:5001/api/menu/items?limit=100");
+      const response = await fetch(`${config.API_BASE_URL}/menu/items?limit=100`);
       const data = await response.json();
       setMenu(data.items || []);
     } catch (error) {
@@ -41,7 +54,7 @@ export default function CustomerDashboard({ user }) {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:5001/api/menu/categories");
+      const response = await fetch(`${config.API_BASE_URL}/menu/categories`);
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -52,7 +65,7 @@ export default function CustomerDashboard({ user }) {
   const fetchOrderHistory = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5001/api/orders/customer/history", {
+      const response = await fetch(`${config.API_BASE_URL}/orders/customer/history`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -61,6 +74,19 @@ export default function CustomerDashboard({ user }) {
       }
     } catch (error) {
       console.error("Error fetching order history:", error);
+    }
+  };
+
+  const fetchTables = async () => {
+    try {
+      // For customers, we'll show public table info (without admin auth)
+      const response = await fetch(`${config.API_BASE_URL}/tables/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setTables(data);
+      }
+    } catch (error) {
+      console.error("Error fetching tables:", error);
     }
   };
 
@@ -131,6 +157,7 @@ export default function CustomerDashboard({ user }) {
             <p>{t('menu')}</p>
           </div>
           <div className="header-actions">
+            <NotificationBell />
             <ThemeToggle />
             <button 
               className={`nav-btn ${currentView === 'menu' ? 'active' : ''}`}
@@ -143,6 +170,12 @@ export default function CustomerDashboard({ user }) {
               onClick={() => setCurrentView('favorites')}
             >
               ❤️ {t('favorites')}
+            </button>
+            <button 
+              className={`nav-btn ${currentView === 'qrcodes' ? 'active' : ''}`}
+              onClick={() => setCurrentView('qrcodes')}
+            >
+              📱 QR Codes
             </button>
             <button 
               className="history-btn"
@@ -209,6 +242,55 @@ export default function CustomerDashboard({ user }) {
           onAddToCart={addToCart} 
           cart={cart} 
         />
+      )}
+
+      {currentView === 'qrcodes' && (
+        <div className="qrcodes-section">
+          <h2>📱 Table QR Codes</h2>
+          <p>Scan these QR codes to access table-specific menus for quick ordering!</p>
+          
+          <div className="qr-grid">
+            {tables.map(table => (
+              <div key={table._id} className="qr-card">
+                <div className="qr-header">
+                  <h3>🪑 Table {table.number}</h3>
+                  <p>Capacity: {table.capacity} people</p>
+                </div>
+                
+                <div className="qr-code-container">
+                  <QRCodeDisplay 
+                    value={`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`}
+                    size={150}
+                  />
+                </div>
+                
+                <div className="qr-actions">
+                  <button 
+                    className="view-menu-btn"
+                    onClick={() => window.open(`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`, '_blank')}
+                  >
+                    🍽️ View Menu
+                  </button>
+                  <button 
+                    className="copy-link-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`);
+                      alert('Link copied to clipboard!');
+                    }}
+                  >
+                    🔗 Copy Link
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {tables.length === 0 && (
+            <div className="no-tables">
+              <p>No tables available at the moment.</p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Review Modal */}

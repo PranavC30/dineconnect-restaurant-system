@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import MenuItemCard from "../components/MenuItemCard";
 import Cart from "../components/Cart";
+import NotificationBell from "../components/NotificationBell";
+import config from "../config";
+import { useNotification } from "../contexts/NotificationContext";
 import "../App.css";
 
 export default function MenuByTable() {
@@ -15,6 +18,7 @@ export default function MenuByTable() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [guestSession] = useState(() => 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+  const { joinRoom, requestNotificationPermission } = useNotification();
 
   useEffect(() => {
     fetchTableInfo();
@@ -23,9 +27,17 @@ export default function MenuByTable() {
     loadCart();
   }, [tableSlug]);
 
+  useEffect(() => {
+    // Join table-specific notification room for guest users
+    if (table) {
+      joinRoom('customer', guestSession, table.tableId);
+      requestNotificationPermission();
+    }
+  }, [table, guestSession, joinRoom, requestNotificationPermission]);
+
   const fetchTableInfo = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/tables/by-slug/${tableSlug}`);
+      const response = await fetch(`${config.API_BASE_URL}/tables/by-slug/${tableSlug}`);
       if (response.ok) {
         const data = await response.json();
         setTable(data);
@@ -40,7 +52,7 @@ export default function MenuByTable() {
 
   const fetchMenu = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/menu/items?availability=true&limit=100`);
+      const response = await fetch(`${config.API_BASE_URL}/menu/items?availability=true&limit=100`);
       const data = await response.json();
       setMenu(data.items || []);
     } catch (error) {
@@ -52,7 +64,7 @@ export default function MenuByTable() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/menu/categories`);
+      const response = await fetch(`${config.API_BASE_URL}/menu/categories`);
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -110,7 +122,7 @@ export default function MenuByTable() {
         }))
       };
 
-      const response = await fetch('http://localhost:5001/api/orders', {
+      const response = await fetch(`${config.API_BASE_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -174,12 +186,15 @@ export default function MenuByTable() {
             <h1>🍽️ Table {table.number}</h1>
             <p>DineConnect</p>
           </div>
-          <button 
-            className="cart-btn"
-            onClick={() => setShowCart(true)}
-          >
-            🛒 Cart ({cartItemsCount})
-          </button>
+          <div className="header-actions">
+            <NotificationBell />
+            <button 
+              className="cart-btn"
+              onClick={() => setShowCart(true)}
+            >
+              🛒 Cart ({cartItemsCount})
+            </button>
+          </div>
         </div>
       </header>
 

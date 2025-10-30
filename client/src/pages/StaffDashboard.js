@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import Receipt from "../components/Receipt";
+import NotificationBell from "../components/NotificationBell";
+import { useNotification } from "../contexts/NotificationContext";
 import "../App.css";
 
 export default function StaffDashboard({ user }) {
   const [orders, setOrders] = useState([]);
+  const { joinRoom, requestNotificationPermission } = useNotification();
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -31,8 +34,15 @@ export default function StaffDashboard({ user }) {
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 10000); // polling every 10 sec
+    
+    // Join kitchen notification room
+    if (user) {
+      joinRoom('staff', user.userId);
+      requestNotificationPermission();
+    }
+    
     return () => clearInterval(interval);
-  }, [selectedStatus]);
+  }, [selectedStatus, user, joinRoom, requestNotificationPermission]);
 
   const updateStatus = async (id, status) => {
     try {
@@ -135,9 +145,12 @@ export default function StaffDashboard({ user }) {
             <h1>👨‍🍳 DineConnect Staff</h1>
             <p>Welcome back, {user.name}!</p>
           </div>
-          <button className="logout-btn" onClick={logout}>
-            Logout
-          </button>
+          <div className="header-actions">
+            <NotificationBell />
+            <button className="logout-btn" onClick={logout}>
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 

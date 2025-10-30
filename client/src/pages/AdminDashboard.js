@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCodeDisplay from "../components/QRCodeDisplay";
 import "../App.css";
 
 export default function AdminDashboard({ user }) {
@@ -408,14 +409,30 @@ export default function AdminDashboard({ user }) {
             <div className="tables-grid">
               {tables.map(table => (
                 <div key={table._id} className="table-card">
-                  <div className="table-number">Table {table.number}</div>
-                  <div className="table-capacity">Capacity: {table.capacity}</div>
+                  <div className="table-header">
+                    <div className="table-number">Table {table.number}</div>
+                    <div className="table-capacity">Capacity: {table.capacity}</div>
+                  </div>
+                  
+                  <div className="table-qr-preview">
+                    <QRCodeDisplay 
+                      value={`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`}
+                      size={120}
+                    />
+                  </div>
+                  
                   <div className="table-actions">
                     <button
                       className="qr-btn"
                       onClick={() => generateQR(table._id)}
                     >
                       📱 Download QR
+                    </button>
+                    <button
+                      className="view-menu-btn"
+                      onClick={() => window.open(`${process.env.REACT_APP_MOBILE_URL || 'http://192.168.50.51:3001'}/m/${table.qrSlug}`, '_blank')}
+                    >
+                      🍽️ Test Menu
                     </button>
                   </div>
                 </div>

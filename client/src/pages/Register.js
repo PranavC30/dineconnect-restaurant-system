@@ -1,4 +1,5 @@
 import { useState } from "react";
+import config from "../config";
 import "../App.css";
 
 export default function Register() {
@@ -28,7 +29,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5001/api/auth/register", {
+      const res = await fetch(`${config.API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role })

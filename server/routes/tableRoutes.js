@@ -14,6 +14,18 @@ router.get("/", adminOnly, async (req, res) => {
   }
 });
 
+// Get public tables info (for customers to see QR codes)
+router.get("/public", async (req, res) => {
+  try {
+    const tables = await Table.find({ isActive: true })
+      .select('number capacity qrSlug')
+      .sort({ number: 1 });
+    res.json(tables);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Create new table (Admin only)
 router.post("/", adminOnly, async (req, res) => {
   try {

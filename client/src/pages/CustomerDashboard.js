@@ -220,7 +220,7 @@ export default function CustomerDashboard({ user }) {
               className={`nav-btn ${currentView === 'voice' ? 'active' : ''}`}
               onClick={() => setCurrentView('voice')}
             >
-              🎤 Voice Order
+              🎤 Dine
             </button>
             <button 
               className="history-btn"

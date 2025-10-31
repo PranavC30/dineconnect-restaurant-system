@@ -10,6 +10,8 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentOrder, setCurrentOrder] = useState([]);
   const [pendingOrder, setPendingOrder] = useState(null); // Store order for confirmation
+  const [voiceGender, setVoiceGender] = useState('female'); // male or female voice
+  const [language, setLanguage] = useState('hi-IN'); // Hindi-English mix
 
   useEffect(() => {
     // Check if browser supports speech recognition
@@ -22,7 +24,7 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
       // Configuration
       recognitionInstance.continuous = false;
       recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'en-IN'; // English + Hindi
+      recognitionInstance.lang = language; // Dynamic language
       
       // Event handlers
       recognitionInstance.onstart = () => {
@@ -64,8 +66,20 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
       setRecognition(recognitionInstance);
     }
 
+    // Load voices
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      console.log('🔍 Voices loaded:', voices.length);
+    };
+    
+    // Load voices when they become available
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    loadVoices();
+
     // Welcome message
-    addToConversation('assistant', `🎉 Hi ${customerName || 'there'}! I'm your DineConnect voice assistant. Just say "Hi DineConnect, I want [food item]" and I'll automatically add it to your cart!`);
+    addToConversation('assistant', `🎉 Hi ${customerName || 'there'}! I'm Dine, your smart dining assistant! Just say "Hey Dine, I want [food item]" and I'll automatically add it to your cart!`);
   }, [customerName]);
 
   const addToConversation = (sender, message) => {
@@ -79,6 +93,131 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
     const lowerInput = input.toLowerCase().trim();
     console.log('🔍 Debug - Processing input:', `"${lowerInput}"`); // Debug log
     
+    // Simple test response for any input
+    if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('test')) {
+      const response = "🎉 Hello! I can hear you perfectly! I'm Dine, your voice assistant. Try saying 'I want coffee' or 'tell me a joke'!";
+      addToConversation('assistant', response);
+      speakResponse(response);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Voice test command
+    if (lowerInput.includes('voice test') || lowerInput.includes('test voice') || lowerInput.includes('awaaz test')) {
+      const response = voiceGender === 'female' ? 
+        "💃 This is my female voice! I sound sweet and melodious. How do you like it?" :
+        "🕺 This is my male voice! I sound deep and confident. How do you like it?";
+      addToConversation('assistant', response);
+      speakResponse(response);
+      setIsProcessing(false);
+      return;
+    }
+    
+    // Voice gender switching
+    if (lowerInput.includes('female voice') || lowerInput.includes('ladki ki awaaz') || 
+        lowerInput.includes('महिला की आवाज़') || lowerInput.includes('girl voice')) {
+      setVoiceGender('female');
+      const response = language === 'hi-IN' ? 
+        "💃 Ab main female voice mein bol rahi hun! Kaisi lag rahi hai meri awaaz?" :
+        "💃 I'm now speaking in female voice! How do I sound?";
+      addToConversation('assistant', response);
+      speakResponse(response);
+      setIsProcessing(false);
+      return;
+    } else if (lowerInput.includes('male voice') || lowerInput.includes('ladke ki awaaz') || 
+               lowerInput.includes('पुरुष की आवाज़') || lowerInput.includes('boy voice')) {
+      setVoiceGender('male');
+      const response = language === 'hi-IN' ? 
+        "🕺 Ab main male voice mein bol raha hun! Kaisi lag rahi hai meri awaaz?" :
+        "🕺 I'm now speaking in male voice! How do I sound?";
+      addToConversation('assistant', response);
+      speakResponse(response);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Language switching
+    if (lowerInput.includes('english') || lowerInput.includes('अंग्रेजी')) {
+      setLanguage('en-IN');
+      addToConversation('assistant', "Switched to English! How can I help you?");
+      speakResponse("Switched to English! How can I help you?");
+      setIsProcessing(false);
+      return;
+    } else if (lowerInput.includes('hindi') || lowerInput.includes('हिंदी')) {
+      setLanguage('hi-IN');
+      addToConversation('assistant', "Hindi mein switch ho gaya! Kya chahiye aapko?");
+      speakResponse("Hindi mein switch ho gaya! Kya chahiye aapko?");
+      setIsProcessing(false);
+      return;
+    }
+
+    // Extra fun commands (simplified)
+    if (lowerInput.includes('joke') || lowerInput.includes('funny') || lowerInput.includes('hasao')) {
+      const jokes = {
+        'hi-IN': [
+          "😄 Ek customer ne kaha: 'Biryani mein namak kam hai!' Waiter bola: 'Sir, aap tears add kar dijiye!'",
+          "🤣 Pizza aur biryani mein kya difference hai? Pizza round hai, biryani heart-shaped!",
+          "😂 Customer: 'Ye dal kya hai?' Waiter: 'Sir, ye dal hai!' Customer: 'Nahi, ye toh paani hai!' Waiter: 'Sir, dal bhi swimming seekh gayi hai!'"
+        ],
+        'en-IN': [
+          "😄 Why did the biryani go to therapy? Because it had too many layers of emotions!",
+          "🤣 What did the pizza say to the burger? You're bun-believable!",
+          "😂 Why don't restaurants serve broken cookies? Because they don't want to deal with crumb-y customers!"
+        ]
+      };
+      const randomJoke = jokes[language][Math.floor(Math.random() * jokes[language].length)];
+      addToConversation('assistant', randomJoke);
+      speakResponse(randomJoke);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Food recommendations
+    if (lowerInput.includes('recommend') || lowerInput.includes('suggest') || 
+        lowerInput.includes('सुझाव') || lowerInput.includes('recommend kar') ||
+        lowerInput.includes('kya khau') || lowerInput.includes('what should i eat')) {
+      const recommendations = language === 'hi-IN' ? 
+        `🍽️ Mere favorite items hain: Chicken Biryani (sabse popular!), Cold Coffee (refreshing!), aur Chocolate Brownie (sweet ending ke liye)! Kya try karenge?` :
+        `🍽️ My top recommendations are: Chicken Biryani (most popular!), Cold Coffee (so refreshing!), and Chocolate Brownie (perfect sweet ending)! What would you like to try?`;
+      addToConversation('assistant', recommendations);
+      speakResponse(recommendations);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Time-based greetings
+    if (lowerInput.includes('good morning') || lowerInput.includes('सुप्रभात') || 
+        lowerInput.includes('suprabhat')) {
+      const morningGreeting = language === 'hi-IN' ? 
+        "🌅 Suprabhat! Breakfast mein kya lenge? Fresh start ke liye kuch healthy order karte hain!" :
+        "🌅 Good morning! What would you like for breakfast? Let's start fresh with something healthy!";
+      addToConversation('assistant', morningGreeting);
+      speakResponse(morningGreeting);
+      setIsProcessing(false);
+      return;
+    } else if (lowerInput.includes('good evening') || lowerInput.includes('शुभ संध्या') ||
+               lowerInput.includes('shubh sandhya')) {
+      const eveningGreeting = language === 'hi-IN' ? 
+        "🌆 Shubh sandhya! Dinner time hai! Kuch special order karte hain!" :
+        "🌆 Good evening! It's dinner time! Let's order something special!";
+      addToConversation('assistant', eveningGreeting);
+      speakResponse(eveningGreeting);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Thank you responses
+    if (lowerInput.includes('thank you') || lowerInput.includes('thanks') ||
+        lowerInput.includes('धन्यवाद') || lowerInput.includes('shukriya')) {
+      const thankResponse = language === 'hi-IN' ? 
+        "🙏 Aapka swagat hai! Meri khushi hai ki main aapki help kar payi! Kuch aur chahiye?" :
+        "🙏 You're most welcome! I'm happy I could help you! Anything else you need?";
+      addToConversation('assistant', thankResponse);
+      speakResponse(thankResponse);
+      setIsProcessing(false);
+      return;
+    }
+
     // Check for order confirmation (multiple phrases)
     if (lowerInput === 'yes' || lowerInput === 'yeah' || lowerInput === 'yep' || 
         lowerInput.includes('yes') || lowerInput.includes('confirm') || 
@@ -98,19 +237,29 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
       cancelCurrentOrder();
     }
     // Check for greeting and order initiation
-    else if (lowerInput.includes('hi dineconnect') || lowerInput.includes('hello dineconnect')) {
+    else if (lowerInput.includes('hi dine') || lowerInput.includes('hello dine') || 
+             lowerInput.includes('hey dine') || lowerInput.includes('dine')) {
       if (lowerInput.includes('take my order') || lowerInput.includes('order')) {
         handleOrderInitiation(input);
       } else {
         respondToGreeting();
       }
     }
-    // Check for direct orders
-    else if (lowerInput.includes('i want') || lowerInput.includes('i wanna') || lowerInput.includes('order')) {
+    // Check for direct orders (enhanced - any food-related word)
+    else if (lowerInput.includes('want') || lowerInput.includes('order') || 
+             lowerInput.includes('chahiye') || lowerInput.includes('food') ||
+             lowerInput.includes('khana') || lowerInput.includes('मुझे') ||
+             // Check if speech contains any menu item words
+             menuItems.some(item => {
+               const itemWords = item.name.toLowerCase().split(/[\s\-\(\)]+/);
+               return itemWords.some(word => word.length > 2 && lowerInput.includes(word));
+             })) {
       handleDirectOrder(input);
     }
     // Check for menu inquiry
-    else if (lowerInput.includes('what do you have') || lowerInput.includes('menu') || lowerInput.includes('available')) {
+    else if (lowerInput.includes('what do you have') || lowerInput.includes('menu') || 
+             lowerInput.includes('available') || lowerInput.includes('show items') ||
+             lowerInput.includes('list items') || lowerInput.includes('kya hai')) {
       showMenuOptions();
     }
     else {
@@ -237,18 +386,29 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
 
   const showMenuOptions = () => {
     const categories = [...new Set(menuItems.map(item => item.categoryId?.name).filter(Boolean))];
-    const popularItems = menuItems.slice(0, 5).map(item => item.name).join(', ');
+    const allItems = menuItems.map(item => item.name).join(', ');
     
-    const response = `🍽️ We have ${categories.join(', ')} and more! Some popular items are: ${popularItems}. What catches your interest?`;
-    addToConversation('assistant', response);
-    speakResponse(response);
+    if (menuItems.length <= 10) {
+      // If few items, list all
+      const response = `🍽️ Here are all our items: ${allItems}. Just say "I want [item name]" to order!`;
+      addToConversation('assistant', response);
+      speakResponse(response);
+    } else {
+      // If many items, show categories and some examples
+      const popularItems = menuItems.slice(0, 8).map(item => item.name).join(', ');
+      const response = `🍽️ We have ${categories.join(', ')} and more! Some items are: ${popularItems}. Just say "I want [any item name]" to order!`;
+      addToConversation('assistant', response);
+      speakResponse(response);
+    }
+    
+    console.log('🔍 Debug - All menu items for voice recognition:', menuItems.map(item => item.name));
   };
 
   const handleUnknownInput = () => {
     const responses = [
-      `🤔 I didn't quite catch that. Could you try saying "I want [item name]" or "Hi DineConnect, take my order"?`,
-      `😊 Sorry, I'm still learning! Try saying something like "I want chicken biryani" or "show me the menu".`,
-      `🎤 Let me help you! Say "Hi DineConnect, I want [food item]" and I'll take care of the rest.`
+      `🤔 I heard you, but I'm not sure what you want. Try saying: "I want coffee", "tell me a joke", or "hello"!`,
+      `😊 I'm listening! Try simple commands like: "I want biryani", "joke", or "hello Dine"!`,
+      `🎤 I can hear you! Try saying: "I want food", "hello", or "joke sunao"!`
     ];
     
     const response = responses[Math.floor(Math.random() * responses.length)];
@@ -266,66 +426,151 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
     const foundItems = [];
     const lowerSpeech = speech.toLowerCase();
     
-    // Extract numbers
-    const numbers = lowerSpeech.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/g) || [];
-    const quantities = numbers.map(num => {
-      const numberMap = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-      return numberMap[num] || parseInt(num) || 1;
-    });
+    console.log('🔍 Debug - Analyzing speech:', lowerSpeech); // Debug log
+    console.log('🔍 Debug - Available menu items:', menuItems.map(item => item.name)); // Debug log
     
-    // Find matching menu items
-    menuItems.forEach(item => {
+    // Enhanced number extraction (Hindi + English)
+    const hindiNumbers = {
+      'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'छह': 6, 'सात': 7, 'आठ': 8, 'नौ': 9, 'दस': 10,
+      'ek': 1, 'do': 2, 'teen': 3, 'char': 4, 'panch': 5, 'cheh': 6, 'saat': 7, 'aath': 8, 'nau': 9, 'das': 10,
+      'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+    };
+    
+    const numbers = lowerSpeech.match(/\b(एक|दो|तीन|चार|पांच|छह|सात|आठ|नौ|दस|ek|do|teen|char|panch|cheh|saat|aath|nau|das|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/g) || [];
+    const quantities = numbers.map(num => hindiNumbers[num] || parseInt(num) || 1);
+    
+    // Dynamic item matching for ALL menu items
+    menuItems.forEach((item, index) => {
       const itemName = item.name.toLowerCase();
-      const itemWords = itemName.split(' ');
+      const itemWords = itemName.split(/[\s\-\(\)]+/).filter(word => word.length > 2); // Split by spaces, hyphens, parentheses
       
-      // Check for exact or partial matches
-      const hasMatch = itemWords.some(word => 
-        lowerSpeech.includes(word) || 
-        lowerSpeech.includes(word.substring(0, Math.max(4, word.length - 2)))
-      );
+      console.log('🔍 Debug - Checking item:', itemName, 'words:', itemWords); // Debug log
       
-      // Check for common food terms
-      const foodAliases = {
-        'coffee': ['coffee', 'kafi', 'cold coffee'],
-        'tea': ['tea', 'chai', 'masala tea'],
-        'biryani': ['biryani', 'biriyani', 'rice'],
-        'chicken': ['chicken', 'murgh'],
-        'mutton': ['mutton', 'goat'],
-        'dal': ['dal', 'lentil'],
-        'roti': ['roti', 'chapati', 'bread'],
-        'lassi': ['lassi', 'yogurt drink', 'mango lassi'],
-        'cold drink': ['cold drink', 'soft drink', 'soda', 'coke', 'pepsi']
-      };
+      let matchScore = 0;
+      let matchedWords = [];
       
-      console.log('🔍 Debug - Checking item:', itemName, 'against speech:', lowerSpeech); // Debug log
-      
-      Object.entries(foodAliases).forEach(([key, aliases]) => {
-        if (itemName.includes(key) && aliases.some(alias => lowerSpeech.includes(alias))) {
-          if (!foundItems.find(fi => fi.id === item._id)) {
-            const quantity = quantities[foundItems.length] || 1;
-            foundItems.push({
-              id: item._id,
-              name: item.name,
-              price: item.price,
-              quantity: quantity
-            });
-          }
+      // Check each word in the item name
+      itemWords.forEach(word => {
+        if (word.length < 3) return; // Skip very short words
+        
+        // Exact word match
+        if (lowerSpeech.includes(word)) {
+          matchScore += 10;
+          matchedWords.push(word);
+        }
+        // Partial word match (at least 3 characters)
+        else if (word.length >= 4 && lowerSpeech.includes(word.substring(0, Math.max(3, word.length - 1)))) {
+          matchScore += 5;
+          matchedWords.push(word.substring(0, 3) + '...');
+        }
+        // Phonetic/similar matches
+        else {
+          const phoneticMatches = getPhoneticMatches(word);
+          phoneticMatches.forEach(phoneticWord => {
+            if (lowerSpeech.includes(phoneticWord)) {
+              matchScore += 7;
+              matchedWords.push(phoneticWord);
+            }
+          });
         }
       });
       
-      if (hasMatch && !foundItems.find(fi => fi.id === item._id)) {
+      // Additional scoring for common food terms and categories
+      const categoryBonus = getCategoryBonus(itemName, lowerSpeech);
+      matchScore += categoryBonus;
+      
+      console.log('🔍 Debug - Item:', itemName, 'Score:', matchScore, 'Matched words:', matchedWords); // Debug log
+      
+      // If we have a good match (score >= 5), add to found items
+      if (matchScore >= 5 && !foundItems.find(fi => fi.id === item._id)) {
         const quantity = quantities[foundItems.length] || 1;
         foundItems.push({
           id: item._id,
           name: item.name,
           price: item.price,
-          quantity: quantity
+          quantity: quantity,
+          matchScore: matchScore,
+          matchedWords: matchedWords
         });
       }
     });
     
-    console.log('🔍 Debug - Final found items:', foundItems); // Debug log
-    return foundItems;
+    // Sort by match score (highest first) and take best matches
+    foundItems.sort((a, b) => b.matchScore - a.matchScore);
+    
+    console.log('🔍 Debug - Final found items:', foundItems.map(item => ({
+      name: item.name,
+      score: item.matchScore,
+      words: item.matchedWords
+    }))); // Debug log
+    
+    return foundItems.slice(0, 3); // Return top 3 matches to avoid too many items
+  };
+
+  // Helper function for phonetic/similar word matching
+  const getPhoneticMatches = (word) => {
+    const phoneticMap = {
+      // Common food phonetic variations
+      'chicken': ['murgh', 'murg', 'चिकन'],
+      'mutton': ['bakra', 'goat', 'भेड़', 'बकरा'],
+      'biryani': ['biriyani', 'briyani', 'बिरयानी'],
+      'coffee': ['kafi', 'कॉफी'],
+      'tea': ['chai', 'चाय'],
+      'dal': ['daal', 'दाल'],
+      'roti': ['chapati', 'रोटी'],
+      'rice': ['chawal', 'चावल'],
+      'curry': ['sabzi', 'सब्जी'],
+      'masala': ['spice', 'मसाला'],
+      'paneer': ['cottage', 'पनीर'],
+      'butter': ['makhan', 'मक्खन'],
+      'tikka': ['टिक्का'],
+      'tandoor': ['तंदूर'],
+      'naan': ['नान'],
+      'lassi': ['लस्सी'],
+      'mango': ['aam', 'आम'],
+      'chocolate': ['चॉकलेट'],
+      'brownie': ['ब्राउनी'],
+      'pizza': ['पिज्जा'],
+      'burger': ['बर्गर'],
+      'pasta': ['पास्ता'],
+      'samosa': ['समोसा'],
+      'chole': ['चोले'],
+      'bhature': ['भटूरे']
+    };
+    
+    // Return phonetic matches for the word
+    return phoneticMap[word] || [];
+  };
+
+  // Helper function for category-based bonus scoring
+  const getCategoryBonus = (itemName, speech) => {
+    let bonus = 0;
+    
+    // Category keywords that boost matching
+    const categoryKeywords = {
+      'drink': ['drink', 'पेय', 'liquid', 'beverage'],
+      'food': ['food', 'खाना', 'eat', 'khana'],
+      'sweet': ['sweet', 'मिठाई', 'dessert', 'mithai'],
+      'spicy': ['spicy', 'तीखा', 'hot', 'teekha'],
+      'cold': ['cold', 'ठंडा', 'thanda', 'cool'],
+      'hot': ['hot', 'गर्म', 'garam', 'warm']
+    };
+    
+    Object.entries(categoryKeywords).forEach(([category, keywords]) => {
+      keywords.forEach(keyword => {
+        if (speech.includes(keyword)) {
+          // Check if item belongs to this category
+          if ((category === 'drink' && (itemName.includes('coffee') || itemName.includes('tea') || itemName.includes('lassi'))) ||
+              (category === 'sweet' && (itemName.includes('chocolate') || itemName.includes('brownie') || itemName.includes('cookies'))) ||
+              (category === 'cold' && itemName.includes('cold')) ||
+              (category === 'hot' && (itemName.includes('tea') || itemName.includes('coffee')))) {
+            bonus += 3;
+          }
+        }
+      });
+    });
+    
+    return bonus;
   };
 
   const speakResponse = (text) => {
@@ -333,13 +578,75 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-IN';
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      utterance.volume = 0.8;
-      
-      window.speechSynthesis.speak(utterance);
+      // Wait a bit for voices to load
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = language;
+        
+        // Get all available voices
+        const voices = window.speechSynthesis.getVoices();
+        console.log('🔍 Available voices:', voices.map(v => v.name)); // Debug log
+        
+        let selectedVoice = null;
+        
+        if (voiceGender === 'female') {
+          // Enhanced female voice selection
+          selectedVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('zira') ||
+            voice.name.toLowerCase().includes('cortana') ||
+            voice.name.toLowerCase().includes('samantha') ||
+            voice.name.toLowerCase().includes('karen') ||
+            voice.name.toLowerCase().includes('susan') ||
+            voice.name.toLowerCase().includes('female') ||
+            (voice.name.toLowerCase().includes('english') && voice.name.toLowerCase().includes('female'))
+          );
+          
+          // Voice settings for attractive female voice
+          utterance.rate = 0.9;
+          utterance.pitch = 1.4;
+          utterance.volume = 1.0;
+        } else {
+          // Enhanced male voice selection
+          selectedVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('david') ||
+            voice.name.toLowerCase().includes('mark') ||
+            voice.name.toLowerCase().includes('alex') ||
+            voice.name.toLowerCase().includes('james') ||
+            voice.name.toLowerCase().includes('male') ||
+            (voice.name.toLowerCase().includes('english') && voice.name.toLowerCase().includes('male'))
+          );
+          
+          // Voice settings for attractive male voice
+          utterance.rate = 0.85;
+          utterance.pitch = 0.7;
+          utterance.volume = 1.0;
+        }
+        
+        // Fallback voice selection if specific gender not found
+        if (!selectedVoice) {
+          selectedVoice = voices.find(voice => 
+            voice.lang.includes('en') || voice.lang.includes('hi')
+          );
+        }
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+          console.log('🔍 Selected voice:', selectedVoice.name, 'Gender:', voiceGender); // Debug log
+        } else {
+          console.log('🔍 No specific voice found, using default'); // Debug log
+        }
+        
+        // Error handling
+        utterance.onerror = (event) => {
+          console.error('🔍 Speech synthesis error:', event.error);
+        };
+        
+        utterance.onstart = () => {
+          console.log('🔍 Speech started with voice:', utterance.voice?.name || 'default');
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      }, 100); // Small delay to ensure voices are loaded
     }
   };
 
@@ -368,8 +675,44 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
   return (
     <div className="voice-assistant">
       <div className="voice-header">
-        <h3>🤖 DineConnect Voice Assistant</h3>
-        <p>Say "Hi DineConnect, please take my order" to get started!</p>
+        <h3>🤖 Dine - Your Smart Dining Companion</h3>
+        <p>Say "Hey Dine, I want food" to get started!</p>
+        <div className="voice-controls-header">
+          <select 
+            value={language} 
+            onChange={(e) => setLanguage(e.target.value)}
+            className="language-selector"
+          >
+            <option value="hi-IN">🇮🇳 Hindi + English</option>
+            <option value="en-IN">🇬🇧 English + Hindi</option>
+          </select>
+          <select 
+            value={voiceGender} 
+            onChange={(e) => {
+              setVoiceGender(e.target.value);
+              // Test the voice immediately
+              const testText = e.target.value === 'female' ? 
+                "Hello! This is my female voice. How do I sound?" :
+                "Hello! This is my male voice. How do I sound?";
+              speakResponse(testText);
+            }}
+            className="voice-selector"
+          >
+            <option value="female">👩 Female Voice</option>
+            <option value="male">👨 Male Voice</option>
+          </select>
+          <button 
+            onClick={() => {
+              const testText = voiceGender === 'female' ? 
+                "💃 Testing female voice! I sound sweet and melodious!" :
+                "🕺 Testing male voice! I sound deep and confident!";
+              speakResponse(testText);
+            }}
+            className="voice-test-btn"
+          >
+            🎤 Test Voice
+          </button>
+        </div>
       </div>
 
       <div className="conversation-area">
@@ -438,21 +781,39 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
         <h4>💡 Voice Commands:</h4>
         <div className="examples-grid">
           <div className="example-category">
-            <strong>🍽️ Auto-Order (No Confirmation Needed!):</strong>
+            <strong>🍽️ Order ANY Menu Item:</strong>
             <ul>
-              <li>"Hi DineConnect, I want cold coffee"</li>
-              <li>"I want 2 chicken biryani"</li>
-              <li>"Order 1 mango lassi please"</li>
-              <li>"I wanna have dal and roti"</li>
+              <li>"I want pizza" / "Pizza chahiye"</li>
+              <li>"Order samosa" / "Samosa order karo"</li>
+              <li>"I want chocolate brownie"</li>
+              <li>"Paneer butter masala chahiye"</li>
             </ul>
           </div>
           <div className="example-category">
-            <strong>🔍 Menu Inquiry:</strong>
+            <strong>🎤 Voice Control:</strong>
             <ul>
-              <li>"What do you have?"</li>
-              <li>"Show me drinks"</li>
-              <li>"What's available?"</li>
-              <li>"Show me the menu"</li>
+              <li>"Female voice mein bolo"</li>
+              <li>"Switch to male voice"</li>
+              <li>"Voice test" / "Test voice"</li>
+              <li>"English mein baat karo"</li>
+            </ul>
+          </div>
+          <div className="example-category">
+            <strong>🎪 Fun Commands:</strong>
+            <ul>
+              <li>"Tell me a joke"</li>
+              <li>"Joke sunao"</li>
+              <li>"Good morning Dine"</li>
+              <li>"Recommend kuch"</li>
+            </ul>
+          </div>
+          <div className="example-category">
+            <strong>🔍 Menu & Help:</strong>
+            <ul>
+              <li>"What do you have?" / "Menu dikhao"</li>
+              <li>"Show all items" / "List items"</li>
+              <li>"Kya available hai?"</li>
+              <li>"Thank you Dine"</li>
             </ul>
           </div>
         </div>

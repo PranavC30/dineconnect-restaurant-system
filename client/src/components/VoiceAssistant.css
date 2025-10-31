@@ -23,9 +23,62 @@
 }
 
 .voice-header p {
-  margin: 0;
+  margin: 0 0 15px 0;
   opacity: 0.9;
   font-size: 14px;
+}
+
+.voice-controls-header {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.language-selector,
+.voice-selector {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 25px;
+  padding: 8px 15px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.language-selector:hover,
+.voice-selector:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.language-selector option,
+.voice-selector option {
+  background: #667eea;
+  color: white;
+  padding: 5px;
+}
+
+.voice-test-btn {
+  background: linear-gradient(45deg, #f39c12, #e67e22);
+  border: none;
+  border-radius: 25px;
+  padding: 8px 15px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.voice-test-btn:hover {
+  background: linear-gradient(45deg, #e67e22, #d35400);
+  transform: translateY(-2px);
 }
 
 .conversation-area {

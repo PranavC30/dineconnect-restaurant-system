@@ -46,7 +46,80 @@ router.post("/login", async (req, res) => {
     { expiresIn: "7d" }
   );
 
-  res.json({ message: "Login successful", token });
+  res.json({ 
+    message: "Login successful", 
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      picture: user.picture
+    }
+  });
+});
+
+// GOOGLE LOGIN
+router.post("/google-login", async (req, res) => {
+  try {
+    const { email, name, picture, googleId, role } = req.body;
+
+    console.log('🔍 Google login attempt:', { email, name, googleId });
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User exists, update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.picture = picture;
+        await user.save();
+      }
+      console.log('✅ Existing user found:', user.email);
+    } else {
+      // Create new user with Google data
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        picture,
+        role: role || "customer",
+        passwordHash: null, // No password for Google users
+        isGoogleUser: true
+      });
+      console.log('✅ New Google user created:', user.email);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        role: user.role, 
+        name: user.name,
+        email: user.email,
+        picture: user.picture 
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: "7d" }
+    );
+
+    res.json({ 
+      message: "Google login successful", 
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        picture: user.picture
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Google login error:', error);
+    res.status(500).json({ message: "Google login failed", error: error.message });
+  }
 });
 
 module.exports = router;

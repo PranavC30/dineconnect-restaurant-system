@@ -3407,7 +3407,7 @@ nced Table Card Styles */
   margin-top: 15px;
 }
 
-.qr-btn, .view-menu-btn {
+.qr-btn, .view-menu-btn, .delete-btn {
   padding: 10px 15px;
   border: none;
   border-radius: 8px;
@@ -3443,6 +3443,17 @@ nced Table Card Styles */
   background: #e9ecef;
   border-color: #667eea;
   color: #667eea;
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #ff3742, #ff2f3a);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
 }
 
 /* Dark theme for table cards */

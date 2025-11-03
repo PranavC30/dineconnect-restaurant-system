@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import QRCodeDisplay from "../components/QRCodeDisplay";
+import config from "../config";
 import "../App.css";
 
 export default function AdminDashboard({ user }) {
@@ -19,15 +20,15 @@ export default function AdminDashboard({ user }) {
   const fetchData = async () => {
     try {
       const [catsRes, itemsRes, tablesRes, ordersRes, statsRes] = await Promise.all([
-        fetch("http://localhost:5001/api/menu/categories"),
-        fetch("http://localhost:5001/api/menu/items?limit=100"),
-        fetch("http://localhost:5001/api/tables", {
+        fetch(`${config.API_BASE_URL}/menu/categories`),
+        fetch(`${config.API_BASE_URL}/menu/items?limit=100`),
+        fetch(`${config.API_BASE_URL}/tables`, {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://localhost:5001/api/orders", {
+        fetch(`${config.API_BASE_URL}/orders`, {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://localhost:5001/api/orders/stats/dashboard", {
+        fetch(`${config.API_BASE_URL}/orders/stats/dashboard`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ]);
@@ -52,7 +53,7 @@ export default function AdminDashboard({ user }) {
 
   const generateQR = async (tableId) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/tables/${tableId}/qr`, {
+      const response = await fetch(`${config.API_BASE_URL}/tables/${tableId}/qr`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -75,7 +76,7 @@ export default function AdminDashboard({ user }) {
     if (!number) return;
 
     try {
-      const response = await fetch("http://localhost:5001/api/tables", {
+      const response = await fetch(`${config.API_BASE_URL}/tables`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,9 +101,35 @@ export default function AdminDashboard({ user }) {
     }
   };
 
+  const deleteTable = async (tableId, tableNumber) => {
+    if (!window.confirm(`Are you sure you want to delete Table ${tableNumber}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/tables/${tableId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        fetchData();
+        alert("Table deleted successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Error deleting table:", error);
+      alert("Error deleting table");
+    }
+  };
+
   const toggleItemAvailability = async (itemId, currentAvailability) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/menu/items/${itemId}/availability`, {
+      const response = await fetch(`${config.API_BASE_URL}/menu/items/${itemId}/availability`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -122,8 +149,8 @@ export default function AdminDashboard({ user }) {
   const fetchOrdersByStatus = async (status) => {
     try {
       const url = status === 'all' 
-        ? "http://localhost:5001/api/orders" 
-        : `http://localhost:5001/api/orders?status=${status}`;
+        ? `${config.API_BASE_URL}/orders` 
+        : `${config.API_BASE_URL}/orders?status=${status}`;
         
       const response = await fetch(url, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -140,7 +167,7 @@ export default function AdminDashboard({ user }) {
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:5001/api/orders/${orderId}/status`, {
+      const response = await fetch(`${config.API_BASE_URL}/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -433,6 +460,12 @@ export default function AdminDashboard({ user }) {
                       onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
                     >
                       🍽️ Test Menu
+                    </button>
+                    <button
+                      className="delete-btn"
+                      onClick={() => deleteTable(table._id, table.number)}
+                    >
+                      🗑️ Delete
                     </button>
                   </div>
                 </div>

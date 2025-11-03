@@ -1,6 +1,8 @@
 import { useState } from "react";
 import config from "../config";
+import HybridGoogleLogin from "../components/HybridGoogleLogin";
 import "../App.css";
+import "../components/GoogleLogin.css";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -9,6 +11,43 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("customer");
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleSuccess = async (userData) => {
+    try {
+      console.log('🔍 Processing Google signup:', userData);
+      
+      // Send Google user data to our backend for registration
+      const res = await fetch(`${config.API_BASE_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userData.email,
+          name: userData.name,
+          picture: userData.picture,
+          googleId: userData.googleId,
+          role: role // Use selected role from dropdown
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.token) {
+        alert("Google Registration Successful! 🎉 You are now logged in.");
+        localStorage.setItem("token", data.token);
+        window.location.href = "/dashboard";
+      } else {
+        alert(data.message || 'Google registration failed');
+      }
+    } catch (err) {
+      console.error("Google registration error:", err);
+      alert("Google Registration Error ❌");
+    }
+  };
+
+  const handleGoogleError = (error) => {
+    console.error('Google registration error:', error);
+    alert('Google registration failed. Please try again.');
+  };
 
   const handleRegister = async () => {
     // Validation
@@ -156,6 +195,18 @@ export default function Register() {
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
+
+            <div className="login-divider">
+              <span>or</span>
+            </div>
+
+            <div className="social-login-section">
+              <div className="social-login-title">Sign up with Google</div>
+              <HybridGoogleLogin 
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+              />
+            </div>
             
             <div className="login-footer">
               <p>Already have an account?</p>
@@ -172,4 +223,3 @@ export default function Register() {
     </div>
   );
 }
-

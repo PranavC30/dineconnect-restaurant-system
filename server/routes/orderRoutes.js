@@ -6,10 +6,24 @@ const Table = require("../models/Table");
 const { authMiddleware, staffOrAdmin, authenticated } = require("../middleware/authMiddleware");
 
 // Create Order (Customer or Guest)
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { tableId, items, guestSession } = req.body;
-    const customerId = req.user?.id || null;
+    
+    // Check if user is authenticated
+    const token = req.headers.authorization?.split(" ")[1];
+    let customerId = null;
+    
+    if (token) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        customerId = decoded.id;
+      } catch (error) {
+        // Token invalid, continue as guest
+        console.log('Invalid token, continuing as guest');
+      }
+    }
 
     // Validate or assign table
     let table;
@@ -24,6 +38,13 @@ router.post("/", authMiddleware, async (req, res) => {
       if (!table) {
         return res.status(400).json({ message: "No tables available" });
       }
+    }
+
+    // Validate guest session or customer ID
+    if (!customerId && !guestSession) {
+      return res.status(400).json({ 
+        message: "Either customer authentication or guest session required" 
+      });
     }
 
     // Calculate totals

@@ -37,6 +37,17 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "DineConnect API is running" });
 });
 
+// Debug endpoint for frontend testing
+app.post("/api/debug/test", (req, res) => {
+  console.log('🧪 Debug endpoint called:', req.body);
+  res.json({ 
+    status: "OK", 
+    message: "Debug endpoint working", 
+    receivedData: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/dineconnect')
   .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.log("❌ MongoDB Error:", err));

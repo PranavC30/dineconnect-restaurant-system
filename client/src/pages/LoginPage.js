@@ -1,6 +1,8 @@
 import { useState } from "react";
 import config from "../config";
+import HybridGoogleLogin from "../components/HybridGoogleLogin";
 import "../App.css";
+import "../components/GoogleLogin.css";
 
 export default function LoginPage({ setUser }) {
   const [email, setEmail] = useState("");
@@ -18,7 +20,17 @@ export default function LoginPage({ setUser }) {
       
       if (data.token) {
         localStorage.setItem("token", data.token);
-        setUser(data);
+        // Use user object from response or decode JWT token
+        if (data.user) {
+          setUser(data.user);
+        } else {
+          try {
+            const payload = JSON.parse(atob(data.token.split('.')[1]));
+            setUser(payload);
+          } catch (error) {
+            console.error('Error decoding token:', error);
+          }
+        }
       } else {
         alert(data.message);
       }
@@ -26,6 +38,59 @@ export default function LoginPage({ setUser }) {
       console.error("Login error:", err);
       alert("Server Error ❌");
     }
+  };
+
+  const handleGoogleSuccess = async (userData) => {
+    try {
+      console.log('🔍 Processing Google login:', userData.email);
+      
+      // Send Google user data to our backend
+      const res = await fetch(`${config.API_BASE_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userData.email,
+          name: userData.name,
+          picture: userData.picture,
+          googleId: userData.googleId,
+          role: userData.role || 'customer'
+        }),
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ Google login HTTP error:', res.status, errorText);
+        throw new Error(`Login failed: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        // Use user object from response or decode JWT token
+        if (data.user) {
+          setUser(data.user);
+        } else {
+          try {
+            const payload = JSON.parse(atob(data.token.split('.')[1]));
+            setUser(payload);
+          } catch (error) {
+            console.error('Error decoding token:', error);
+          }
+        }
+        console.log('✅ Google login successful!');
+      } else {
+        alert(data.message || 'Google login failed');
+      }
+    } catch (err) {
+      console.error("Google login error:", err);
+      alert("Google Login Error ❌");
+    }
+  };
+
+  const handleGoogleError = (error) => {
+    console.error('Google login error:', error);
+    alert('Google login failed. Please try again.');
   };
 
   return (
@@ -96,6 +161,18 @@ export default function LoginPage({ setUser }) {
             <button onClick={handleLogin} className="login-btn">
               Sign In
             </button>
+
+            <div className="login-divider">
+              <span>or</span>
+            </div>
+
+            <div className="social-login-section">
+              <div className="social-login-title">Continue with Google</div>
+              <HybridGoogleLogin 
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+              />
+            </div>
             
             <div className="login-footer">
               <p>Don't have an account?</p>

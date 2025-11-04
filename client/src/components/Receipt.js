@@ -150,6 +150,51 @@ export default function Receipt({ order, onClose, restaurantInfo }) {
             </div>
           </div>
 
+          {/* Payment Details */}
+          {order.paymentData && (
+            <div className="receipt-payment">
+              <h3>💳 Payment Details:</h3>
+              <div className="receipt-item">
+                <span>Payment Method:</span>
+                <span className="payment-method">
+                  {order.paymentData.method === 'upi' && '📱 UPI'}
+                  {order.paymentData.method === 'card' && '💳 Card'}
+                  {order.paymentData.method === 'wallet' && '👛 Wallet'}
+                  {order.paymentData.method === 'cash' && '💵 Cash'}
+                  {order.paymentData.method === 'cod' && '💵 Cash on Delivery'}
+                </span>
+              </div>
+              {order.paymentData.upiId && (
+                <div className="receipt-item">
+                  <span>UPI ID:</span>
+                  <span>{order.paymentData.upiId}</span>
+                </div>
+              )}
+              {order.paymentData.cardLast4 && (
+                <div className="receipt-item">
+                  <span>Card:</span>
+                  <span>**** **** **** {order.paymentData.cardLast4} ({order.paymentData.cardType})</span>
+                </div>
+              )}
+              <div className="receipt-item">
+                <span>Transaction ID:</span>
+                <span className="transaction-id">{order.paymentData.transactionId}</span>
+              </div>
+              <div className="receipt-item">
+                <span>Payment Status:</span>
+                <span className={`payment-${order.paymentData.status}`}>
+                  {order.paymentData.status === 'success' && '✅ PAID'}
+                  {order.paymentData.status === 'pending' && '⏳ PENDING'}
+                  {order.paymentData.method === 'cod' && order.paymentData.status === 'pending' && '💵 PAY ON DELIVERY'}
+                </span>
+              </div>
+              <div className="receipt-item">
+                <span>Payment Time:</span>
+                <span>{formatDate(order.paymentData.timestamp)}</span>
+              </div>
+            </div>
+          )}
+
           <div className="receipt-footer">
             <p>Thank you for dining with us! 🙏</p>
             <p>Visit us again soon!</p>

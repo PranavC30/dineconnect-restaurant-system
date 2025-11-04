@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Receipt from "../components/Receipt";
 import NotificationBell from "../components/NotificationBell";
 import { useNotification } from "../contexts/NotificationContext";
+import config from "../config";
 import "../App.css";
 
 export default function StaffDashboard({ user }) {
@@ -16,8 +17,8 @@ export default function StaffDashboard({ user }) {
   const fetchOrders = async () => {
     try {
       const url = selectedStatus === "all" 
-        ? "http://localhost:5001/api/orders" 
-        : `http://localhost:5001/api/orders?status=${selectedStatus}`;
+        ? `${config.API_BASE_URL}/orders` 
+        : `${config.API_BASE_URL}/orders?status=${selectedStatus}`;
         
       const res = await fetch(url, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -46,7 +47,7 @@ export default function StaffDashboard({ user }) {
 
   const updateStatus = async (id, status) => {
     try {
-      const res = await fetch(`http://localhost:5001/api/orders/${id}/status`, {
+      const res = await fetch(`${config.API_BASE_URL}/orders/${id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -127,6 +128,8 @@ export default function StaffDashboard({ user }) {
     return actions;
   };
 
+
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -146,6 +149,14 @@ export default function StaffDashboard({ user }) {
             <p>Welcome back, {user.name}!</p>
           </div>
           <div className="header-actions">
+            <button 
+              className="refresh-btn"
+              onClick={fetchOrders}
+              disabled={loading}
+              title="Refresh orders"
+            >
+              🔄 {loading ? 'Loading...' : 'Refresh'}
+            </button>
             <NotificationBell />
             <button className="logout-btn" onClick={logout}>
               Logout

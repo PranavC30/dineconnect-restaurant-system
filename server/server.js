@@ -40,6 +40,18 @@ app.get("/api/health", (req, res) => {
 // Debug endpoint for frontend testing
 app.post("/api/debug/test", (req, res) => {
   console.log('🧪 Debug endpoint called:', req.body);
+  
+  // Test notification broadcast
+  if (global.io) {
+    global.io.emit('order-update', {
+      orderId: 'TEST123',
+      status: 'preparing',
+      message: '🧪 Test notification - Your order is being prepared!',
+      timestamp: new Date()
+    });
+    console.log('📡 Test notification sent to all clients');
+  }
+  
   res.json({ 
     status: "OK", 
     message: "Debug endpoint working", 

@@ -127,6 +127,11 @@ export default function CustomerDashboard({ user }) {
     }
   };
 
+  const clearAllCart = () => {
+    setCart([]);
+    localStorage.setItem("cart", JSON.stringify([]));
+  };
+
   const handleVoiceOrder = async (orderItems) => {
     try {
       // First, add items to cart so user can see them
@@ -375,6 +380,7 @@ export default function CustomerDashboard({ user }) {
           cart={cart}
           onClose={() => setShowCart(false)}
           onUpdateItem={updateCartItem}
+          onClearAll={clearAllCart}
         />
       )}
 

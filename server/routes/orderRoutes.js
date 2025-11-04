@@ -8,7 +8,13 @@ const { authMiddleware, staffOrAdmin, authenticated } = require("../middleware/a
 // Create Order (Customer or Guest)
 router.post("/", async (req, res) => {
   try {
-    const { tableId, items, guestSession } = req.body;
+    const { tableId, items, guestSession, paymentData } = req.body;
+    console.log('📝 Order creation request:', { 
+      tableId, 
+      itemsCount: items?.length, 
+      guestSession, 
+      paymentMethod: paymentData?.method 
+    });
     
     // Check if user is authenticated
     const token = req.headers.authorization?.split(" ")[1];
@@ -80,7 +86,15 @@ router.post("/", async (req, res) => {
       items: orderItems,
       subtotal,
       tax,
-      total
+      total,
+      paymentStatus: (paymentData && paymentData.method === 'cod') ? "pending" : 
+                    (paymentData && paymentData.status === 'success') ? "paid" : "pending",
+      paymentData: paymentData ? {
+        method: paymentData.method,
+        transactionId: paymentData.transactionId,
+        timestamp: new Date(paymentData.timestamp),
+        amount: paymentData.amount
+      } : undefined
     });
 
     await order.save();
@@ -104,8 +118,11 @@ router.post("/", async (req, res) => {
 
     res.json(order);
   } catch (error) {
-    console.error('Order creation error:', error);
-    res.status(500).json({ message: "Server error" });
+    console.error('❌ Order creation error:', error);
+    res.status(500).json({ 
+      message: "Server error", 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 

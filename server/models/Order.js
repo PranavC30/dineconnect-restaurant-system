@@ -26,6 +26,12 @@ const orderSchema = new mongoose.Schema({
   tax: { type: Number, default: 0 },
   total: { type: Number, required: true },
   paymentStatus: { type: String, enum: ["pending", "paid"], default: "pending" },
+  paymentData: {
+    method: { type: String, enum: ["upi", "card", "wallet", "cash", "cod"], default: "cash" },
+    transactionId: { type: String },
+    timestamp: { type: Date },
+    amount: { type: Number }
+  },
   guestSession: { type: String }, // For guest orders
   orderNumber: { type: String, unique: true }
 }, {

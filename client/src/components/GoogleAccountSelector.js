@@ -20,7 +20,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSelectAccount }) => {
       email: 'lucky@gmail.com',
       picture: null, // Will use CSS avatar
       backgroundColor: '#34a853',
-      role: 'admin'
+      role: 'customer'
     },
     {
       id: 'google_003',
@@ -28,7 +28,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSelectAccount }) => {
       email: 'monika@gmail.com',
       picture: null, // Will use CSS avatar
       backgroundColor: '#ea4335',
-      role: 'staff'
+      role: 'customer'
     }
   ];
 

@@ -1,14 +1,41 @@
 import { useState } from "react";
 import Receipt from "./Receipt";
+import PaymentModal from "./PaymentModal";
+import config from "../config";
 import "../App.css";
 
-export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGuest = false }) {
+export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, onClearAll }) {
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showOrderConfirm, setShowOrderConfirm] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   const updateQuantity = (itemId, newQty) => {
-    onUpdateItem(itemId, newQty);
+    if (newQty <= 0) {
+      // If quantity becomes 0 or negative, remove item
+      onUpdateItem(itemId, 0);
+    } else {
+      onUpdateItem(itemId, newQty);
+    }
+  };
+
+  const removeItem = (itemId, itemName) => {
+    if (window.confirm(`Remove ${itemName} from cart?`)) {
+      onUpdateItem(itemId, 0);
+    }
+  };
+
+  const clearAllItems = () => {
+    if (window.confirm('Clear all items from cart?')) {
+      if (onClearAll) {
+        // Use the dedicated clear all function for instant clearing
+        onClearAll();
+      } else {
+        // Fallback: clear items one by one
+        cart.forEach(item => onUpdateItem(item._id, 0));
+      }
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -17,10 +44,22 @@ export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGues
       return;
     }
 
+    // Show order confirmation modal
+    setShowOrderConfirm(true);
+  };
+
+  const confirmOrder = () => {
+    setShowOrderConfirm(false);
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    setShowPayment(false);
+    
     if (onPlaceOrder) {
-      const order = await onPlaceOrder();
+      const order = await onPlaceOrder(paymentData);
       if (order) {
-        setLastOrder(order);
+        setLastOrder({...order, paymentData});
         setShowReceipt(true);
       }
     } else {
@@ -32,42 +71,54 @@ export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGues
       }
       
       try {
-        // Create order via API (using default table for now)
+        // Create order via API with payment data
         const orderData = {
           tableId: null, // Will be handled by backend to assign default table
           items: cart.map(item => ({
             menuItemId: item._id,
             qty: item.qty,
             note: ""
-          }))
+          })),
+          paymentData: paymentData, // Include payment information
+          guestSession: !token ? `guest_${Date.now()}` : undefined // Add guest session if no token
         };
 
-        const response = await fetch("http://localhost:5001/api/orders", {
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${config.API_BASE_URL}/orders`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
+          headers: headers,
           body: JSON.stringify(orderData)
         });
 
         if (response.ok) {
           const order = await response.json();
-          console.log("Order created successfully:", order);
-          setLastOrder(order);
+          console.log("✅ Order created successfully:", order);
+          setLastOrder({...order, paymentData});
           setShowReceipt(true);
-          alert(`Order placed successfully! Order #${order.orderNumber}`);
-          cart.forEach(item => onUpdateItem(item._id, 0));
+          // Clear cart after successful order
+          if (onClearAll) {
+            onClearAll();
+          } else {
+            cart.forEach(item => onUpdateItem(item._id, 0));
+          }
+          // Don't close cart here - let receipt modal handle it
         } else {
           const error = await response.json();
-          console.error("Order creation failed:", error);
-          alert(`Failed to place order: ${error.message}`);
+          console.error("❌ Order creation failed:", error);
+          alert(`Failed to place order: ${error.message || 'Unknown error'}`);
         }
       } catch (error) {
-        console.error("Error placing order:", error);
-        alert("Failed to place order. Please try again.");
+        console.error("❌ Network error placing order:", error);
+        alert(`Failed to place order: ${error.message || 'Network error'}. Please check your connection and try again.`);
       }
-      onClose();
+      // Don't auto-close cart on error
     }
   };
 
@@ -76,7 +127,18 @@ export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGues
       <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
         <div className="cart-header">
           <h2>🛒 Your Cart</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <div className="cart-header-actions">
+            {cart.length > 0 && (
+              <button 
+                className="clear-cart-btn"
+                onClick={() => clearAllItems()}
+                title="Clear all items"
+              >
+                🗑️ Clear All
+              </button>
+            )}
+            <button className="close-btn" onClick={onClose}>×</button>
+          </div>
         </div>
 
         <div className="cart-content">
@@ -110,8 +172,17 @@ export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGues
                         +
                       </button>
                     </div>
-                    <div className="item-total">
-                      ₹{item.price * item.qty}
+                    <div className="item-actions">
+                      <div className="item-total">
+                        ₹{item.price * item.qty}
+                      </div>
+                      <button 
+                        className="remove-btn"
+                        onClick={() => removeItem(item._id, item.name)}
+                        title="Remove item from cart"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -122,13 +193,67 @@ export default function Cart({ cart, onClose, onUpdateItem, onPlaceOrder, isGues
                   <strong>Total: ₹{total}</strong>
                 </div>
                 <button className="place-order-btn" onClick={handlePlaceOrder}>
-                  🍽️ {isGuest ? 'Place Order' : 'Place Order'}
+                  💳 Pay & Order
                 </button>
               </div>
             </>
           )}
         </div>
       </div>
+
+      {/* Order Confirmation Modal */}
+      {showOrderConfirm && (
+        <div className="order-confirm-overlay" onClick={() => setShowOrderConfirm(false)}>
+          <div className="order-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="order-confirm-header">
+              <h3>🛒 Confirm Your Order</h3>
+              <button className="close-btn" onClick={() => setShowOrderConfirm(false)}>×</button>
+            </div>
+            
+            <div className="order-confirm-content">
+              <p>You are about to order {cart.length} item{cart.length > 1 ? 's' : ''}:</p>
+              
+              <div className="order-confirm-items">
+                {cart.map((item) => (
+                  <div key={item._id} className="confirm-item">
+                    <span className="confirm-item-name">{item.qty}x {item.name}</span>
+                    <span className="confirm-item-price">₹{item.price * item.qty}</span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="order-confirm-total">
+                <strong>Total Amount: ₹{total}</strong>
+              </div>
+              
+              <div className="order-confirm-actions">
+                <button 
+                  className="cancel-order-btn"
+                  onClick={() => setShowOrderConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="proceed-payment-btn"
+                  onClick={confirmOrder}
+                >
+                  Proceed to Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPayment && (
+        <PaymentModal
+          isOpen={showPayment}
+          onClose={() => setShowPayment(false)}
+          orderTotal={total}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
 
       {/* Receipt Modal */}
       {showReceipt && lastOrder && (

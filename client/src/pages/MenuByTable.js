@@ -145,7 +145,7 @@ export default function MenuByTable() {
     }
   };
 
-  const placeOrder = async () => {
+  const placeOrder = async (paymentData = null) => {
     if (!table || cart.length === 0) return null;
 
     try {
@@ -156,7 +156,8 @@ export default function MenuByTable() {
           menuItemId: item._id,
           qty: item.qty,
           note: ""
-        }))
+        })),
+        paymentData
       };
 
       const response = await fetch(`${config.API_BASE_URL}/orders`, {

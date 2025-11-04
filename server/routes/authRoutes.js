@@ -66,29 +66,56 @@ router.post("/google-login", async (req, res) => {
 
     console.log('🔍 Google login attempt:', { email, name, googleId });
 
-    // Check if user already exists
-    let user = await User.findOne({ email });
+    // Check if user already exists by email or googleId
+    let user = await User.findOne({ 
+      $or: [{ email }, { googleId }] 
+    });
 
     if (user) {
-      // User exists, update Google ID if not set
-      if (!user.googleId) {
+      // User exists, update Google ID and picture if needed
+      if (!user.googleId || user.googleId !== googleId) {
         user.googleId = googleId;
-        user.picture = picture;
-        await user.save();
       }
+      if (picture) {
+        user.picture = picture;
+      }
+      // Ensure role is customer for demo accounts
+      if (['pranav@gmail.com', 'lucky@gmail.com', 'monika@gmail.com'].includes(email)) {
+        user.role = 'customer';
+      }
+      await user.save();
       console.log('✅ Existing user found:', user.email);
     } else {
       // Create new user with Google data
-      user = await User.create({
-        name,
-        email,
-        googleId,
-        picture,
-        role: role || "customer",
-        passwordHash: null, // No password for Google users
-        isGoogleUser: true
-      });
-      console.log('✅ New Google user created:', user.email);
+      try {
+        user = await User.create({
+          name,
+          email,
+          googleId,
+          picture,
+          role: role || "customer",
+          passwordHash: null, // No password for Google users
+          isGoogleUser: true
+        });
+        console.log('✅ New Google user created:', user.email);
+      } catch (createError) {
+        // Handle duplicate key error
+        if (createError.code === 11000) {
+          // Try to find existing user and update
+          user = await User.findOne({ 
+            $or: [{ email }, { googleId }] 
+          });
+          if (user) {
+            user.role = role || "customer";
+            await user.save();
+            console.log('✅ Found existing user after duplicate error:', user.email);
+          } else {
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      }
     }
 
     // Generate JWT token

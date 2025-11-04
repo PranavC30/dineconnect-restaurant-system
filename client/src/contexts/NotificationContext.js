@@ -18,15 +18,49 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5001');
+    const getSocketUrl = () => {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:5002';
+      } else {
+        return 'http://10.151.242.51:5002';
+      }
+    };
+    
+    const newSocket = io(process.env.REACT_APP_SERVER_URL || getSocketUrl());
     
     newSocket.on('connect', () => {
       console.log('🔔 Connected to notification server');
       setIsConnected(true);
+      
+      // Show connection success notification
+      addNotification({
+        id: Date.now(),
+        type: 'system',
+        title: 'Connected',
+        message: '🟢 Real-time notifications enabled',
+        timestamp: new Date(),
+        read: false
+      });
     });
 
     newSocket.on('disconnect', () => {
       console.log('🔔 Disconnected from notification server');
+      setIsConnected(false);
+      
+      // Show disconnection notification
+      addNotification({
+        id: Date.now(),
+        type: 'system',
+        title: 'Disconnected',
+        message: '🔴 Connection lost. Trying to reconnect...',
+        timestamp: new Date(),
+        read: false
+      });
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.log('🔔 Connection error:', error);
       setIsConnected(false);
     });
 

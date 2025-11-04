@@ -26,6 +26,7 @@ const NotificationBell = () => {
       case 'order-update': return '🍽️';
       case 'new-order': return '🔔';
       case 'kitchen-update': return '👨‍🍳';
+      case 'system': return '⚙️';
       default: return '📱';
     }
   };

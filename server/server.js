@@ -16,7 +16,7 @@ const app = express();
 
 // CORS configuration for production
 const corsOptions = {
-  origin: ["http://localhost:3001", "http://localhost:3000", "http://10.151.242.51:3001"],
+  origin: ["http://localhost:3001", "http://localhost:3000", "http://10.235.195.51:3001", "http://192.168.163.1:3001"],
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -68,7 +68,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/dineconnect
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3001", "http://localhost:3000", "http://10.151.242.51:3001"],
+    origin: ["http://localhost:3001", "http://localhost:3000", "http://100.102.244.77:3001"],
     methods: ["GET", "POST"]
   }
 });

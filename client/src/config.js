@@ -3,10 +3,10 @@ const getApiBaseUrl = () => {
   const hostname = window.location.hostname;
   
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:5002/api';
+    return 'http://localhost:5001/api';
   } else {
     // Use network IP for mobile access
-    return 'http://10.151.242.51:5002/api';
+    return 'http://10.235.195.51:5001/api';
   }
 };
 

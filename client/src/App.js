@@ -47,25 +47,25 @@ function App() {
       <LanguageProvider>
         <NotificationProvider>
           <Router>
-          <div className="App">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={!user ? <LoginPage setUser={setUser} /> : <Navigate to={getDashboardRoute(user.role)} />} />
-              <Route path="/register" element={!user ? <Register /> : <Navigate to={getDashboardRoute(user.role)} />} />
-              <Route path="/m/:tableSlug" element={<MenuByTable />} />
-              
-              {/* Protected Routes */}
-              <Route path="/customer" element={user && user.role === 'customer' ? <CustomerDashboard user={user} /> : <Navigate to="/login" />} />
-              <Route path="/staff" element={user && user.role === 'staff' ? <StaffDashboard user={user} /> : <Navigate to="/login" />} />
-              <Route path="/admin" element={user && user.role === 'admin' ? <AdminDashboard user={user} /> : <Navigate to="/login" />} />
-              
-              {/* Default Route */}
-              <Route path="/" element={
-                user ? <Navigate to={getDashboardRoute(user.role)} /> : <Navigate to="/login" />
-              } />
-            </Routes>
-          </div>
-        </Router>
+            <div className="App">
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={!user ? <LoginPage setUser={setUser} /> : <Navigate to={getDashboardRoute(user.role)} />} />
+                <Route path="/register" element={!user ? <Register /> : <Navigate to={getDashboardRoute(user.role)} />} />
+                <Route path="/m/:tableSlug" element={<MenuByTable />} />
+
+                {/* Protected Routes */}
+                <Route path="/customer" element={user && user.role === 'customer' ? <CustomerDashboard user={user} /> : <Navigate to="/login" />} />
+                <Route path="/staff" element={user && user.role === 'staff' ? <StaffDashboard user={user} /> : <Navigate to="/login" />} />
+                <Route path="/admin" element={user && user.role === 'admin' ? <AdminDashboard user={user} /> : <Navigate to="/login" />} />
+
+                {/* Default Route */}
+                <Route path="/" element={
+                  user ? <Navigate to={getDashboardRoute(user.role)} /> : <Navigate to="/login" />
+                } />
+              </Routes>
+            </div>
+          </Router>
         </NotificationProvider>
       </LanguageProvider>
     </ThemeProvider>

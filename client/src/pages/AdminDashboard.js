@@ -443,7 +443,7 @@ export default function AdminDashboard({ user }) {
                   
                   <div className="table-qr-preview">
                     <QRCodeDisplay 
-                      value={`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`}
+                      value={`http://${window.location.hostname === 'localhost' ? '100.102.244.77' : window.location.hostname}:3001/m/${table.qrSlug}`}
                       size={120}
                     />
                   </div>
@@ -457,7 +457,7 @@ export default function AdminDashboard({ user }) {
                     </button>
                     <button
                       className="view-menu-btn"
-                      onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
+                      onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '100.102.244.77' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
                     >
                       🍽️ Test Menu
                     </button>

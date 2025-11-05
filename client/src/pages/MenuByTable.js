@@ -4,6 +4,8 @@ import MenuItemCard from "../components/MenuItemCard";
 import Cart from "../components/Cart";
 import NotificationBell from "../components/NotificationBell";
 import VoiceOrdering from "../components/VoiceOrdering";
+import ChatBot from "../components/ChatBot";
+import SpinWheel from "../components/SpinWheel";
 import config from "../config";
 import { useNotification } from "../contexts/NotificationContext";
 import "../App.css";
@@ -16,6 +18,8 @@ export default function MenuByTable() {
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showCart, setShowCart] = useState(false);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [guestSession] = useState(() => 'guest-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
@@ -38,16 +42,25 @@ export default function MenuByTable() {
 
   const fetchTableInfo = async () => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/tables/by-slug/${tableSlug}`);
+      const apiUrl = `${config.API_BASE_URL}/tables/by-slug/${tableSlug}`;
+      console.log('🔍 Fetching table info from:', apiUrl);
+      console.log('🏷️ Table slug:', tableSlug);
+      
+      const response = await fetch(apiUrl);
+      console.log('📡 Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Table data received:', data);
         setTable(data);
         localStorage.setItem('currentTable', JSON.stringify(data));
       } else {
-        console.error('Table not found');
+        const errorText = await response.text();
+        console.error('❌ Table not found. Response:', errorText);
+        console.error('❌ Status:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching table info:', error);
+      console.error('❌ Error fetching table info:', error);
     }
   };
 
@@ -77,6 +90,25 @@ export default function MenuByTable() {
     const saved = localStorage.getItem(`cart-${tableSlug}`);
     if (saved) {
       setCart(JSON.parse(saved));
+    }
+    
+    // Load saved discount with validation - user-specific
+    const discountKey = `discount-${tableSlug}-${guestSession}`;
+    const savedDiscount = localStorage.getItem(discountKey);
+    if (savedDiscount) {
+      try {
+        const discount = JSON.parse(savedDiscount);
+        // Validate discount object
+        if (discount && (discount.discount > 0 || discount.special)) {
+          setAppliedDiscount(discount);
+        } else {
+          // Clear invalid discount
+          localStorage.removeItem(discountKey);
+        }
+      } catch (error) {
+        // Clear corrupted discount data
+        localStorage.removeItem(discountKey);
+      }
     }
   };
 
@@ -145,10 +177,59 @@ export default function MenuByTable() {
     }
   };
 
+  const getDiscountText = (discount) => {
+    if (!discount) return 'Spin & Win';
+    
+    if (discount.special === "free_dessert") {
+      return "🍰 Free Dessert";
+    } else if (discount.special === "free_drink") {
+      return "🥤 Free Drink";
+    } else if (discount.discount) {
+      return `${discount.discount}% OFF`;
+    } else {
+      return "🎁 Prize Won";
+    }
+  };
+
+  const handleSpinWin = (prize) => {
+    console.log('🎡 Spin Win Result:', prize);
+    setAppliedDiscount(prize);
+    // Use user-specific key with guestSession
+    localStorage.setItem(`discount-${tableSlug}-${guestSession}`, JSON.stringify(prize));
+    
+    // Show success message
+    if (prize.special === "free_dessert") {
+      alert("🍰 Congratulations! Free dessert added to your benefits!");
+    } else if (prize.special === "free_drink") {
+      alert("🥤 Awesome! Free drink added to your benefits!");
+    } else if (prize.discount) {
+      alert(`🎉 Amazing! ${prize.discount}% discount applied to your order!`);
+    } else {
+      alert("🎁 Congratulations! You won a special prize!");
+    }
+  };
+
+  const calculateTotal = () => {
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.qty), 0);
+    let discount = 0;
+    
+    if (appliedDiscount && appliedDiscount.discount > 0) {
+      discount = (subtotal * appliedDiscount.discount) / 100;
+    }
+    
+    return {
+      subtotal,
+      discount,
+      total: subtotal - discount
+    };
+  };
+
   const placeOrder = async (paymentData = null) => {
     if (!table || cart.length === 0) return null;
 
     try {
+      const totals = calculateTotal();
+      
       const orderData = {
         tableId: table.tableId,
         guestSession,
@@ -157,6 +238,10 @@ export default function MenuByTable() {
           qty: item.qty,
           note: ""
         })),
+        appliedDiscount: appliedDiscount,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        total: totals.total,
         paymentData
       };
 
@@ -171,7 +256,9 @@ export default function MenuByTable() {
       if (response.ok) {
         const order = await response.json();
         setCart([]);
+        setAppliedDiscount(null);
         localStorage.removeItem(`cart-${tableSlug}`);
+        localStorage.removeItem(`discount-${tableSlug}-${guestSession}`);
         return order; // Return order for receipt
       } else {
         const error = await response.json();
@@ -226,6 +313,31 @@ export default function MenuByTable() {
           </div>
           <div className="header-actions">
             <NotificationBell />
+            <button 
+              className="spin-wheel-btn"
+              onClick={(e) => {
+                console.log('🎡 Spin button clicked!', e);
+                setShowSpinWheel(true);
+              }}
+              disabled={false} // Temporarily enable multiple spins for testing
+              data-testing="true"
+              title={appliedDiscount ? "Click to spin again (Testing Mode)" : "Spin for discounts!"}
+              style={{ cursor: 'pointer !important' }}
+            >
+              🎡 {appliedDiscount ? getDiscountText(appliedDiscount) : 'Spin & Win'}
+            </button>
+            {appliedDiscount && (
+              <button 
+                className="reset-spin-btn"
+                onClick={() => {
+                  setAppliedDiscount(null);
+                  localStorage.removeItem(`discount-${tableSlug}-${guestSession}`);
+                }}
+                title="Reset spin wheel for testing"
+              >
+                🔄 Reset
+              </button>
+            )}
             <button 
               className="cart-btn"
               onClick={() => setShowCart(true)}
@@ -303,6 +415,23 @@ export default function MenuByTable() {
           isGuest={true}
         />
       )}
+
+      {/* Spin Wheel Modal */}
+      {showSpinWheel && (
+        <SpinWheel
+          onClose={() => setShowSpinWheel(false)}
+          onWin={handleSpinWin}
+          allowMultipleSpins={false} // Change to true for unlimited spins
+          resetKey={tableSlug} // Resets when changing tables
+        />
+      )}
+
+      {/* ChatBot */}
+      <ChatBot 
+        menuItems={menu}
+        currentTable={table}
+        onAddToCart={addToCart}
+      />
     </div>
   );
 }

@@ -21,9 +21,9 @@ export const NotificationProvider = ({ children }) => {
     const getSocketUrl = () => {
       const hostname = window.location.hostname;
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://localhost:5002';
+        return 'http://localhost:5001';
       } else {
-        return 'http://10.151.242.51:5002';
+        return 'http://10.235.195.51:5001';
       }
     };
     

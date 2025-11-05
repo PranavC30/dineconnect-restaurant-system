@@ -7,6 +7,8 @@ import ThemeToggle from "../components/ThemeToggle";
 import NotificationBell from "../components/NotificationBell";
 import QRCodeDisplay from "../components/QRCodeDisplay";
 import VoiceAssistant from "../components/VoiceAssistant";
+import ChatBot from "../components/ChatBot";
+import SpinWheel from "../components/SpinWheel";
 import config from "../config";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNotification } from "../contexts/NotificationContext";
@@ -26,6 +28,8 @@ export default function CustomerDashboard({ user }) {
   const [currentView, setCurrentView] = useState('menu'); // menu, favorites, reviews, qrcodes
   const [selectedItemForReview, setSelectedItemForReview] = useState(null);
   const [tables, setTables] = useState([]);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
 
   useEffect(() => {
     fetchMenu();
@@ -91,10 +95,43 @@ export default function CustomerDashboard({ user }) {
     }
   };
 
+  const getDiscountText = (discount) => {
+    if (!discount) return 'Spin & Win';
+    
+    if (discount.special === "free_dessert") {
+      return "🍰 Free Dessert";
+    } else if (discount.special === "free_drink") {
+      return "🥤 Free Drink";
+    } else if (discount.discount) {
+      return `${discount.discount}% OFF`;
+    } else {
+      return "🎁 Prize Won";
+    }
+  };
+
   const loadCart = () => {
     const saved = localStorage.getItem("cart");
     if (saved) {
       setCart(JSON.parse(saved));
+    }
+    
+    // Load saved discount with validation - user-specific
+    const discountKey = `customer-discount-${user?.userId || user?.id || 'anonymous'}`;
+    const savedDiscount = localStorage.getItem(discountKey);
+    if (savedDiscount) {
+      try {
+        const discount = JSON.parse(savedDiscount);
+        // Validate discount object
+        if (discount && (discount.discount > 0 || discount.special)) {
+          setAppliedDiscount(discount);
+        } else {
+          // Clear invalid discount
+          localStorage.removeItem(discountKey);
+        }
+      } catch (error) {
+        // Clear corrupted discount data
+        localStorage.removeItem(discountKey);
+      }
     }
   };
 
@@ -234,6 +271,14 @@ export default function CustomerDashboard({ user }) {
               📋 {t('orderHistory')}
             </button>
             <button 
+              className="spin-wheel-btn"
+              onClick={() => setShowSpinWheel(true)}
+              disabled={appliedDiscount !== null}
+              title={appliedDiscount ? "Already used spin wheel today" : "Spin for discounts!"}
+            >
+              🎡 {appliedDiscount ? getDiscountText(appliedDiscount) : 'Spin & Win'}
+            </button>
+            <button 
               className="cart-btn"
               onClick={() => setShowCart(true)}
             >
@@ -319,7 +364,7 @@ export default function CustomerDashboard({ user }) {
                 
                 <div className="qr-code-container">
                   <QRCodeDisplay 
-                    value={`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`}
+                    value={`http://${window.location.hostname === 'localhost' ? '10.235.195.51' : window.location.hostname}:3001/m/${table.qrSlug}`}
                     size={150}
                   />
                 </div>
@@ -327,14 +372,14 @@ export default function CustomerDashboard({ user }) {
                 <div className="qr-actions">
                   <button 
                     className="view-menu-btn"
-                    onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
+                    onClick={() => window.open(`http://${window.location.hostname === 'localhost' ? '100.102.244.77' : window.location.hostname}:3001/m/${table.qrSlug}`, '_blank')}
                   >
                     🍽️ View Menu
                   </button>
                   <button 
                     className="copy-link-btn"
                     onClick={() => {
-                      navigator.clipboard.writeText(`http://${window.location.hostname === 'localhost' ? '10.151.242.51' : window.location.hostname}:3001/m/${table.qrSlug}`);
+                      navigator.clipboard.writeText(`http://${window.location.hostname === 'localhost' ? '100.102.244.77' : window.location.hostname}:3001/m/${table.qrSlug}`);
                       alert('Link copied to clipboard!');
                     }}
                   >
@@ -429,6 +474,32 @@ export default function CustomerDashboard({ user }) {
           </div>
         </div>
       )}
+
+      {/* Spin Wheel Modal */}
+      {showSpinWheel && (
+        <SpinWheel
+          onClose={() => setShowSpinWheel(false)}
+          onWin={(prize) => {
+            setAppliedDiscount(prize);
+            // Use user-specific key
+            const discountKey = `customer-discount-${user?.userId || user?.id || 'anonymous'}`;
+            localStorage.setItem(discountKey, JSON.stringify(prize));
+            if (prize.special === "free_dessert") {
+              alert("🍰 Congratulations! Free dessert added to your benefits!");
+            } else if (prize.special === "free_drink") {
+              alert("🥤 Awesome! Free drink added to your benefits!");
+            } else {
+              alert(`🎉 Amazing! ${prize.discount}% discount applied to your orders!`);
+            }
+          }}
+        />
+      )}
+
+      {/* ChatBot */}
+      <ChatBot 
+        menuItems={menu}
+        currentTable={null}
+      />
     </div>
   );
 }

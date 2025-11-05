@@ -146,7 +146,7 @@ const RealGoogleLogin = ({ onSuccess, onError }) => {
               <span className="step-number">3</span>
               <div>
                 <strong>Add Authorized Origins:</strong>
-                <br />Add: <code>http://10.151.242.51:3001</code>
+                <br />Add: <code>http://localhost:3001</code>
               </div>
             </div>
             

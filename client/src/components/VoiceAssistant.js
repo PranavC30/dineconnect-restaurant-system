@@ -14,8 +14,17 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
   const [language, setLanguage] = useState('en-US'); // English for better recognition
 
   useEffect(() => {
-    // Check if browser supports speech recognition
+    // Enhanced browser support check
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    console.log('🔍 Browser support check:');
+    console.log('- Browser:', navigator.userAgent.includes('Chrome') ? 'Chrome' : navigator.userAgent.includes('Firefox') ? 'Firefox' : 'Other');
+    console.log('- SpeechRecognition available:', !!SpeechRecognition);
+    console.log('- webkitSpeechRecognition available:', !!window.webkitSpeechRecognition);
+    console.log('- MediaDevices available:', !!navigator.mediaDevices);
+    console.log('- getUserMedia available:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+    console.log('- Protocol:', window.location.protocol);
+    console.log('- Hostname:', window.location.hostname);
+    console.log('- Full URL:', window.location.href);
     
     if (SpeechRecognition) {
       setIsSupported(true);
@@ -67,8 +76,28 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
       };
       
       recognitionInstance.onerror = (event) => {
+        console.log('🔍 Speech Recognition Error:', event.error);
         setIsListening(false);
-        addToConversation('system', `❌ Sorry, I couldn't hear you clearly. Please try again.`);
+        
+        let errorMessage = '';
+        switch(event.error) {
+          case 'not-allowed':
+            errorMessage = '🎤 Microphone access denied. Please allow microphone permission and try again.';
+            break;
+          case 'no-speech':
+            errorMessage = '🔇 No speech detected. Please speak clearly and try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = '🎤 Microphone not found. Please check your microphone and try again.';
+            break;
+          case 'network':
+            errorMessage = '🌐 Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = `❌ Speech recognition error: ${event.error}. Please try again.`;
+        }
+        
+        addToConversation('system', errorMessage);
       };
       
       recognitionInstance.onend = () => {
@@ -660,9 +689,45 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
     }
   };
 
-  const startListening = () => {
+  const startListening = async () => {
     if (recognition && !isListening) {
-      recognition.start();
+      try {
+        console.log('🔍 Attempting to start speech recognition...');
+        
+        // Check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.log('🔍 MediaDevices API not available');
+          addToConversation('system', '🎤 Microphone API not supported in this browser. Please use Chrome, Edge, or Safari.');
+          return;
+        }
+        
+        // Direct microphone access test - bypass permission API
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('🔍 Microphone access successful');
+          stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+        } catch (micError) {
+          console.log('🔍 Direct microphone test failed:', micError);
+          let errorMessage = '';
+          
+          if (micError.name === 'NotAllowedError') {
+            errorMessage = '🎤 Please allow microphone access. Click the microphone icon in your browser address bar and select "Allow".';
+          } else if (micError.name === 'NotFoundError') {
+            errorMessage = '🎤 No microphone detected. Please connect a microphone and try again.';
+          } else {
+            errorMessage = '🎤 Microphone access failed. Please refresh the page and try again.';
+          }
+          
+          addToConversation('system', errorMessage);
+          return;
+        }
+        
+        console.log('🔍 Starting speech recognition...');
+        recognition.start();
+      } catch (error) {
+        console.log('🔍 Speech recognition error:', error);
+        addToConversation('system', '🎤 Voice recognition failed. Please refresh the page and try again.');
+      }
     }
   };
 
@@ -676,8 +741,52 @@ const VoiceAssistant = ({ menuItems, onPlaceOrder, customerName }) => {
     return (
       <div className="voice-assistant voice-not-supported">
         <h3>🎤 Voice Assistant</h3>
-        <p>❌ Voice ordering not supported in this browser</p>
-        <p>Please use Chrome, Edge, or Safari for the best experience</p>
+        <p>❌ Voice recognition not available</p>
+        <p><strong>Try these solutions:</strong></p>
+        <ul>
+          <li>Use Chrome, Edge, or Safari browser</li>
+          <li>Refresh the page (F5)</li>
+          <li>Check if microphone is connected</li>
+          <li>Enable microphone in browser settings</li>
+        </ul>
+        <p><small>Browser: {
+          navigator.userAgent.includes('Chrome') ? 'Chrome' :
+          navigator.userAgent.includes('Firefox') ? 'Firefox' :
+          navigator.userAgent.includes('Edge') ? 'Edge' :
+          navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown'
+        }</small></p>
+        
+        {/* Chrome-specific troubleshooting */}
+        {navigator.userAgent.includes('Chrome') && (
+          <div style={{marginTop: '15px', padding: '15px', backgroundColor: '#e8f5e8', borderRadius: '8px'}}>
+            <strong>🔧 Chrome Troubleshooting:</strong>
+            <ol>
+              <li><strong>Check URL bar:</strong> Look for microphone icon 🎤 and click "Allow"</li>
+              <li><strong>Chrome Settings:</strong> chrome://settings/content/microphone</li>
+              <li><strong>Hard refresh:</strong> Ctrl + Shift + R</li>
+              <li><strong>Try localhost:</strong> <a href="http://localhost:3001" target="_blank">http://localhost:3001</a></li>
+            </ol>
+          </div>
+        )}
+        
+        {/* Text-based fallback */}
+        <div style={{marginTop: '15px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px'}}>
+          <h4>💬 Text-Based Assistant (Fallback)</h4>
+          <p>Type your order below:</p>
+          <input 
+            type="text" 
+            placeholder="Type: I want coffee, show menu, etc."
+            style={{width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc'}}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && e.target.value.trim()) {
+                // Process text input like voice input
+                console.log('Text input:', e.target.value);
+                e.target.value = '';
+              }
+            }}
+          />
+          <small>Press Enter to submit your text command</small>
+        </div>
       </div>
     );
   }
